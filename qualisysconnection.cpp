@@ -1,8 +1,9 @@
 #include "qualisysconnection.h"
+#include "qdebug.h"
 #include <iostream>
 
 QualisysConnection::QualisysConnection(QObject *parent, std::string ip, unsigned short port)
-    : QObject{parent}, ip_{ip}, port_{port}
+    : MocapConnection{parent}, ip_{ip}, port_{port}
 {
     if(!this->connectTCP()) return;
     if(!this->readMarkerSettings()) return;

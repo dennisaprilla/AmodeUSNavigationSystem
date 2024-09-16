@@ -23,6 +23,7 @@ SOURCES += \
     qcustomplotintervalwindow.cpp \
     qualisysconnection.cpp \
     qualisystransformationmanager.cpp \
+    viconconnection.cpp \
     volume3dcontroller.cpp \
     volumeamodecontroller.cpp \
     volumeamodevisualizer.cpp
@@ -36,10 +37,12 @@ HEADERS += \
     mainwindow.h \
     mhareader.h \
     mhawriter.h \
+    mocapconnection.h \
     qcustomplotintervalwindow.h \
     qualisysconnection.h \
     qualisystransformationmanager.h \
     ultrasoundconfig.h \
+    viconconnection.h \
     volume3dcontroller.h \
     volumeamodecontroller.h \
     volumeamodevisualizer.h

@@ -76,7 +76,7 @@ private:
     AmodeConnection *myAmodeConnection              = nullptr;
     AmodeConfig *myAmodeConfig                      = nullptr;
     BmodeConnection *myBmodeConnection              = nullptr;
-    QualisysConnection *myQualisysConnection        = nullptr;
+    MocapConnection *myMocapConnection              = nullptr;
     Bmode3DVisualizer *myBmode3Dvisualizer          = nullptr;
     MHAWriter *myMHAWriter                          = nullptr;
     MHAReader *myMHAReader                          = nullptr;

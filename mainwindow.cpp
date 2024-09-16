@@ -93,7 +93,7 @@ MainWindow::~MainWindow()
 {
     delete ui;
     // delete myBmodeConnection;
-    // delete myQualisysConnection;
+    // delete myMocapConnection;
     // delete myMHAWriter;
     // delete myAmodeConnection;
     // delete myAmodeConfig;
@@ -180,16 +180,16 @@ void MainWindow::on_pushButton_qualisysConnect_clicked()
         return;
     }
 
-    myQualisysConnection = new QualisysConnection(nullptr, qualisys_ipstr, qualisys_portushort);
-    connect(myQualisysConnection, &QualisysConnection::dataReceived, this, &MainWindow::updateQualisysText);
+    myMocapConnection = new QualisysConnection(nullptr, qualisys_ipstr, qualisys_portushort);
+    connect(myMocapConnection, &QualisysConnection::dataReceived, this, &MainWindow::updateQualisysText);
 
-    // Only intantiate Bmode3DVisualizer after myQualisysConnection is instantiated (and connected)
-    // <!> I was thinking that probably i don't need to pass the myBmodeConnection and myQualisysConnection to the constructor
+    // Only intantiate Bmode3DVisualizer after myMocapConnection is instantiated (and connected)
+    // <!> I was thinking that probably i don't need to pass the myBmodeConnection and myMocapConnection to the constructor
     // <!> Better to just connect the signal and the slot outside the constructor
-    // myBmode3Dvisualizer = new Bmode3DVisualizer(nullptr, myBmodeConnection, myQualisysConnection);
+    // myBmode3Dvisualizer = new Bmode3DVisualizer(nullptr, myBmodeConnection, myMocapConnection);
     myBmode3Dvisualizer = new Bmode3DVisualizer(nullptr);
     connect(myBmodeConnection, &BmodeConnection::imageProcessed, myBmode3Dvisualizer, &Bmode3DVisualizer::onImageReceived);
-    connect(myQualisysConnection, &QualisysConnection::dataReceived, myBmode3Dvisualizer, &Bmode3DVisualizer::onRigidBodyReceived);
+    connect(myMocapConnection, &QualisysConnection::dataReceived, myBmode3Dvisualizer, &Bmode3DVisualizer::onRigidBodyReceived);
 
     // adjust the layout
     ui->textEdit_qualisysLog->hide();
@@ -250,6 +250,9 @@ void MainWindow::on_pushButton_calibbrowse_clicked()
 
 void MainWindow::on_pushButton_bmode2d3d_clicked()
 {
+    // If this is stream for bmode2d3d, let's stream them.
+    // Context: I separate stream between bmode2d3d and amode, for efficiency reason. So, when i stream
+    // qualisys and bmode, i will pause the amode, and also vice versa.
     if(isBmode2d3dStream)
     {
         // If this is the first stream, initialize everything
@@ -266,6 +269,11 @@ void MainWindow::on_pushButton_bmode2d3d_clicked()
                 QMessageBox::warning(this, "Input Missing", "Please select the calibration configuration file.");
                 return;
             }
+
+            // Big notes from Dennis. This code started being developed using Qualisys in mind. However,
+            // in the later stage of coding, we decided to use Vicon instead of Qualisys. I made a new
+            // clase for Vicon connection, however, i am too scared to rename all qualisys related variable.
+            // So, keep in mind, that when i say qualisys in a variable, it can be also for vicon.
 
             QString qualisys_ip = ui->lineEdit_qualisysIP->text();
             std::string qualisys_ipstr = qualisys_ip.toStdString();
@@ -309,20 +317,30 @@ void MainWindow::on_pushButton_bmode2d3d_clicked()
             }
 
             /* **********************************************************************************
-             * Qualisys Stream
+             * Qualisys / Vicon Stream
              * ********************************************************************************** */
 
-            myQualisysConnection = new QualisysConnection(nullptr, qualisys_ipstr, qualisys_portushort);
-            myQualisysConnection->startStreaming();
-            // connect(myQualisysConnection, &QualisysConnection::dataReceived, this, &MainWindow::updateQualisysText);
+            // if the current combobox index is zero, it means vicon is selected
+            if(ui->comboBox_mocapSystem->currentIndex()==0)
+            {
+                std::string viconHostname = qualisys_ipstr + std::to_string(qualisys_portushort);
+                // myMocapConnection = new ViconConnection(viconHostname);
+            }
+            // if the current combobox index is one, it means qualisys is selected
+            else
+            {
+                myMocapConnection = new QualisysConnection(nullptr, qualisys_ipstr, qualisys_portushort);
+                myMocapConnection->startStreaming();
+                // connect(myMocapConnection, &QualisysConnection::dataReceived, this, &MainWindow::updateQualisysText);
+            }
 
-            // Only intantiate Bmode3DVisualizer after myQualisysConnection is instantiated (and connected)
-            // <!> I was thinking that probably i don't need to pass the myBmodeConnection and myQualisysConnection to the constructor
+            // Only intantiate Bmode3DVisualizer after myMocapConnection is instantiated (and connected)
+            // <!> I was thinking that probably i don't need to pass the myBmodeConnection and myMocapConnection to the constructor
             // <!> Better to just connect the signal and the slot outside the constructor
-            // myBmode3Dvisualizer = new Bmode3DVisualizer(nullptr, myBmodeConnection, myQualisysConnection);
+            // myBmode3Dvisualizer = new Bmode3DVisualizer(nullptr, myBmodeConnection, myMocapConnection);
             myBmode3Dvisualizer = new Bmode3DVisualizer(nullptr, ui->lineEdit_calibconfig->text());
             connect(myBmodeConnection, &BmodeConnection::imageProcessed, myBmode3Dvisualizer, &Bmode3DVisualizer::onImageReceived);
-            connect(myQualisysConnection, &QualisysConnection::dataReceived, myBmode3Dvisualizer, &Bmode3DVisualizer::onRigidBodyReceived);
+            connect(myMocapConnection, &MocapConnection::dataReceived, myBmode3Dvisualizer, &Bmode3DVisualizer::onRigidBodyReceived);
 
             QFrame* borderFrame = new QFrame(this);
             borderFrame->setFrameStyle(QFrame::Box | QFrame::Plain);
@@ -347,7 +365,7 @@ void MainWindow::on_pushButton_bmode2d3d_clicked()
         }
 
         // If this is not the first time streaming, don't initialize anything anymore,
-        // just connect all the slots for myBmode3Dvisualizer and myQualisysConnection
+        // just connect all the slots for myBmode3Dvisualizer and myMocapConnection
         else
         {
             slotConnect_Bmode2d3d();
@@ -369,7 +387,7 @@ void MainWindow::on_pushButton_bmode2d3d_clicked()
         ui->checkBox_volumeShow3DSignal->setCheckState(Qt::Unchecked);
     }
 
-    // if the user click pause, let's disconnect all the slots to myBmode3Dvisualizer and myQualisysConnection
+    // if the user click pause, let's disconnect all the slots to myBmode3Dvisualizer and myMocapConnection
     else
     {
 
@@ -384,22 +402,22 @@ void MainWindow::on_pushButton_bmode2d3d_clicked()
 
 void MainWindow::slotConnect_Bmode2d3d()
 {
-    if(myQualisysConnection==nullptr || myBmodeConnection==nullptr) return;
+    if(myMocapConnection==nullptr || myBmodeConnection==nullptr) return;
 
     connect(myBmodeConnection, &BmodeConnection::imageProcessed, this, &MainWindow::displayImage);
-    connect(myQualisysConnection, &QualisysConnection::dataReceived, this, &MainWindow::updateQualisysText);
+    connect(myMocapConnection, &MocapConnection::dataReceived, this, &MainWindow::updateQualisysText);
     connect(myBmodeConnection, &BmodeConnection::imageProcessed, myBmode3Dvisualizer, &Bmode3DVisualizer::onImageReceived);
-    connect(myQualisysConnection, &QualisysConnection::dataReceived, myBmode3Dvisualizer, &Bmode3DVisualizer::onRigidBodyReceived);
+    connect(myMocapConnection, &MocapConnection::dataReceived, myBmode3Dvisualizer, &Bmode3DVisualizer::onRigidBodyReceived);
 }
 
 void MainWindow::slotDisconnect_Bmode2d3d()
 {
-    if(myQualisysConnection==nullptr || myBmodeConnection==nullptr) return;
+    if(myMocapConnection==nullptr || myBmodeConnection==nullptr) return;
 
     disconnect(myBmodeConnection, &BmodeConnection::imageProcessed, this, &MainWindow::displayImage);
-    disconnect(myQualisysConnection, &QualisysConnection::dataReceived, this, &MainWindow::updateQualisysText);
+    disconnect(myMocapConnection, &MocapConnection::dataReceived, this, &MainWindow::updateQualisysText);
     disconnect(myBmodeConnection, &BmodeConnection::imageProcessed, myBmode3Dvisualizer, &Bmode3DVisualizer::onImageReceived);
-    disconnect(myQualisysConnection, &QualisysConnection::dataReceived, myBmode3Dvisualizer, &Bmode3DVisualizer::onRigidBodyReceived);
+    disconnect(myMocapConnection, &MocapConnection::dataReceived, myBmode3Dvisualizer, &Bmode3DVisualizer::onRigidBodyReceived);
 }
 
 
@@ -446,7 +464,7 @@ void MainWindow::on_pushButton_mhaRecord_clicked()
         myMHAWriter->startRecord();
         // connect the bmode and qualisys signal data to the mhawriter data receiving slot
         connect(myBmodeConnection, &BmodeConnection::imageProcessed, myMHAWriter, &MHAWriter::onImageReceived);
-        connect(myQualisysConnection, &QualisysConnection::dataReceived, myMHAWriter, &MHAWriter::onRigidBodyReceived);
+        connect(myMocapConnection, &MocapConnection::dataReceived, myMHAWriter, &MHAWriter::onRigidBodyReceived);
     }
     else
     {
@@ -456,7 +474,7 @@ void MainWindow::on_pushButton_mhaRecord_clicked()
 
         // disconnect the bmode and qualisys data to mhawriter object
         disconnect(myBmodeConnection, &BmodeConnection::imageProcessed, myMHAWriter, &MHAWriter::onImageReceived);
-        disconnect(myQualisysConnection, &QualisysConnection::dataReceived, myMHAWriter, &MHAWriter::onRigidBodyReceived);
+        disconnect(myMocapConnection, &MocapConnection::dataReceived, myMHAWriter, &MHAWriter::onRigidBodyReceived);
 
         // tell the mhawriter object to stop recording and start writing it to the file
         int recordstatus = myMHAWriter->stopRecord();
@@ -976,14 +994,14 @@ void MainWindow::on_comboBox_amodeNumber_textActivated(const QString &arg1)
     // myVolumeAmodeController->setAmodeGroupData(amode_group)
 
     // So, what i do? just delete the object...
-    disconnect(myQualisysConnection, &QualisysConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onRigidBodyReceived);    
+    disconnect(myMocapConnection, &MocapConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onRigidBodyReceived);
     disconnect(myAmodeConnection, &AmodeConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onAmodeSignalReceived);
     delete myVolumeAmodeController;
     myVolumeAmodeController = nullptr;
 
     // ...then reinitialize again. It's working. I don't care it is ugly. Bye.
     myVolumeAmodeController = new VolumeAmodeController(nullptr, scatter, amode_group);
-    connect(myQualisysConnection, &QualisysConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onRigidBodyReceived);
+    connect(myMocapConnection, &MocapConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onRigidBodyReceived);
     connect(myAmodeConnection, &AmodeConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onAmodeSignalReceived);
 
 }
@@ -1055,7 +1073,7 @@ void MainWindow::on_checkBox_volumeShow3DSignal_clicked(bool checked)
     // if the checkbox is now true, let's initialize the amode 3d visualization
     if(checked)
     {
-        if(myQualisysConnection==nullptr || myAmodeConnection==nullptr)
+        if(myMocapConnection==nullptr || myAmodeConnection==nullptr)
         {
             QMessageBox::warning(this, "Can't show signal", "To show 3D signal, please connect both amode ultrasound system and motion capture system.");
             ui->checkBox_volumeShow3DSignal->setCheckState(Qt::Unchecked);
@@ -1083,7 +1101,7 @@ void MainWindow::on_checkBox_volumeShow3DSignal_clicked(bool checked)
         myVolumeAmodeController->setActiveHolder(ui->comboBox_amodeNumber->currentText().toStdString());
 
         // connect necessary slots
-        connect(myQualisysConnection, &QualisysConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onRigidBodyReceived);
+        connect(myMocapConnection, &MocapConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onRigidBodyReceived);
         connect(myAmodeConnection, &AmodeConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onAmodeSignalReceived);
     }
 
@@ -1092,11 +1110,11 @@ void MainWindow::on_checkBox_volumeShow3DSignal_clicked(bool checked)
     {
         // I add this condition, because if the user clicked the connect button for bmode2d3d, it will trigger
         // this function with arg1=false (which is this block of code). The problem is if the user never
-        // click show3Dsignal checkboxbefore, this part will be executed and myQualisysConnection, myAmodeConnection
+        // click show3Dsignal checkboxbefore, this part will be executed and myMocapConnection, myAmodeConnection
         // and myVolumeAmodeController are still not initialized yet. To prevent this to happen, i just put this condition below.
 
-        if(myQualisysConnection != nullptr && myVolumeAmodeController != nullptr)
-            disconnect(myQualisysConnection, &QualisysConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onRigidBodyReceived);
+        if(myMocapConnection != nullptr && myVolumeAmodeController != nullptr)
+            disconnect(myMocapConnection, &MocapConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onRigidBodyReceived);
 
         if(myAmodeConnection != nullptr && myVolumeAmodeController != nullptr)
             disconnect(myAmodeConnection, &AmodeConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onAmodeSignalReceived);

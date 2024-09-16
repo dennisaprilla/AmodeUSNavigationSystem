@@ -347,7 +347,7 @@
             </layout>
            </item>
            <item row="0" column="1">
-            <layout class="QHBoxLayout" name="layout_Bmode3D_menu" stretch="0,0,0,0,0,1,0">
+            <layout class="QHBoxLayout" name="layout_Bmode3D_menu" stretch="0,0,0,0,0,0,0,1,0">
              <item>
               <widget class="Line" name="line">
                <property name="orientation">
@@ -356,9 +356,30 @@
               </widget>
              </item>
              <item>
+              <widget class="QLabel" name="label_mocapSystem">
+               <property name="text">
+                <string>Mocap System</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="comboBox_mocapSystem">
+               <item>
+                <property name="text">
+                 <string>Vicon</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Qualisys</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+             <item>
               <widget class="QLabel" name="label_qualisysIP">
                <property name="text">
-                <string>Qualisys-PC IP</string>
+                <string>IP</string>
                </property>
               </widget>
              </item>

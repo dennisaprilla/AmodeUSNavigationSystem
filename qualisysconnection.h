@@ -1,3 +1,4 @@
+
 #ifdef _WIN32
 #define sleep Sleep
 #else
@@ -7,9 +8,10 @@
 #ifndef QUALISYSCONNECTION_H
 #define QUALISYSCONNECTION_H
 
+#include "mocapconnection.h"
 #include "RTProtocol.h"
 #include "RTPacket.h"
-#include "qualisystransformationmanager.h"
+// #include "qualisystransformationmanager.h"
 
 #include "Eigen/Dense"
 
@@ -31,7 +33,7 @@
  *
  */
 
-class QualisysConnection : public QObject
+class QualisysConnection : public MocapConnection
 {
     Q_OBJECT
 public:
@@ -70,7 +72,7 @@ public:
     /**
      * @brief Start qualisys streaming with QThread
      */
-    void startStreaming();
+    void startStreaming() override;
 
     /**
      * @brief Stop qualisys streaming with QThread
@@ -139,11 +141,11 @@ private:
     QWaitCondition m_condition;                 //!< Allows thread to sleep when idle and wake up on demand
     bool m_isRunning = false;                   //!< A flag that tells that the thread is running or not
 
-signals:
-    /**
-     * @brief Emits a tmanager, which consists of transformations of rigid body that is detected by Qualisys
-     */
-    void dataReceived(const QualisysTransformationManager &tmanager);
+// signals:
+//     /**
+//      * @brief Emits a tmanager, which consists of transformations of rigid body that is detected by Qualisys
+//      */
+//     void dataReceived(const QualisysTransformationManager &tmanager);
 };
 
 #endif // QUALISYSCONNECTION_H
