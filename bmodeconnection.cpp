@@ -2,8 +2,8 @@
 
 BmodeConnection::BmodeConnection(QObject *parent) : QObject(parent) {
     // set the roi
-    // roi = cv::Rect(662, 0, 840, 900);
-    roi = cv::Rect(0, 0, 320, 480);
+    roi = cv::Rect(662, 0, 840, 900);
+    // roi = cv::Rect(0, 0, 320, 480);
     // declare a timer
     frameTimer = new QTimer(this);
 

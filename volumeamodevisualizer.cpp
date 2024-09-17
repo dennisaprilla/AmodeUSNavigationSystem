@@ -176,6 +176,7 @@ void VolumeAmodeVisualizer::updateTransformations(Eigen::Isometry3d currentT_hol
 
     // initialize transformation matrix for Qt. In Qt, the representation of rotation matrix
     // is different. You need to transpose it so that it will be the same as representation in Eigen.
+    Eigen::Isometry3d currentT_holder_camera_Qt    = Eigen::Isometry3d::Identity();
     Eigen::Isometry3d currentT_holder_camera_Qt_LH = Eigen::Isometry3d::Identity();
     currentT_holder_camera_Qt_LH.linear()          = tmp_R.transpose();
     currentT_holder_camera_Qt_LH.translation()     = tmp_t;
@@ -215,8 +216,11 @@ void VolumeAmodeVisualizer::updateTransformations(Eigen::Isometry3d currentT_hol
         // currentT_ustip_camera.at(i) = init_A_LH * currentT_holder_camera_LH * currentT_ustip_holder_LH;
         // currentT_ustip_camera_Qt.at(i) = init_A_LH * currentT_holder_camera_Qt_LH * currentT_ustip_holder_Qt_LH;
 
-        currentT_ustip_camera.at(i) = currentT_holder_camera_LH * currentT_ustip_holder_LH;
-        currentT_ustip_camera_Qt.at(i) = currentT_holder_camera_Qt_LH * currentT_ustip_holder_Qt_LH;
+        // currentT_ustip_camera.at(i) = currentT_holder_camera_LH * currentT_ustip_holder_LH;
+        // currentT_ustip_camera_Qt.at(i) = currentT_holder_camera_Qt_LH * currentT_ustip_holder_Qt_LH;
+
+        currentT_ustip_camera.at(i) = currentT_holder_camera * currentT_ustip_holder;
+        currentT_ustip_camera_Qt.at(i) = currentT_holder_camera_Qt * currentT_ustip_holder_Qt;
     }
 }
 
@@ -318,8 +322,11 @@ void VolumeAmodeVisualizer::visualize3DSignal()
             // current_amode3dsignal_display.block(0, start_column, 4, arraysize) = currentT_ustip_camera_Qt.at(i).matrix() * rotation_signaldisplay.at(j) * amode3dsignal_;
 
             // current_amode3dsignal_display.block(0, start_column, 4, arraysize) = currentT_ustip_camera_Qt.at(i).matrix() * amode3dsignal_LH;
-            current_amode3dsignal_display.block(0, start_column, 4, arraysize) = currentT_ustip_camera.at(i).matrix() * amode3dsignal_LH;
+            // current_amode3dsignal_display.block(0, start_column, 4, arraysize) = currentT_ustip_camera.at(i).matrix() * amode3dsignal_LH;
+            current_amode3dsignal_display.block(0, start_column, 4, arraysize) = currentT_ustip_camera.at(i).matrix() * amode3dsignal_;
         }
+        current_amode3dsignal_display.row(1).swap(current_amode3dsignal_display.row(2));
+
 
         // This is the QScatterDataArray object for the signal data, each loop will be new object
         QScatterDataArray *dataArray = new QScatterDataArray;
