@@ -61,7 +61,7 @@ BmodeConnection::~BmodeConnection() {
 }
 
 bool BmodeConnection::openCamera(int cameraIndex) {
-    if(camera.open(cameraIndex)) {
+    if(camera.open(cameraIndex, cv::CAP_DSHOW)) {
         return true;
     }
     return false;

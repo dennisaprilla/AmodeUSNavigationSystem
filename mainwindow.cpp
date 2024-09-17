@@ -437,6 +437,7 @@ void MainWindow::on_pushButton_mhaPath_clicked()
     if (!folderPath.isEmpty()) {
         // Set the file path in the QLineEdit
         ui->lineEdit_mhaPath->setText(folderPath + "/");
+        ui->lineEdit_volumeOutput->setText(folderPath + "/");
     }
 }
 

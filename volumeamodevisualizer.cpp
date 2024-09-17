@@ -222,8 +222,6 @@ void VolumeAmodeVisualizer::updateTransformations(Eigen::Isometry3d currentT_hol
 
 void VolumeAmodeVisualizer::visualize3DSignal()
 {
-    // qDebug() << "VolumeAmodeVisualizer::visualize3DSignal";
-
     // update all necessary transformations
     updateTransformations(currentT_holder_camera);
 
@@ -232,13 +230,16 @@ void VolumeAmodeVisualizer::visualize3DSignal()
     int offset_y = 0;
     int offset_z = 0;
 
-    // delete all the series inside the scatter. So everytime there is a new rigidbody data coming
-    // from qualisys, we should remove all the scatter data in our scatter series
-    for (QScatter3DSeries *series : scatter_->seriesList()) {
-        if (series->name() == "amode3dsignal" || series->name() == "amode3dorigin") {
-            scatter_->removeSeries(series);
+
+    QMetaObject::invokeMethod(scatter_, [this]() {
+        // delete all the series inside the scatter. So everytime there is a new rigidbody data coming
+        // from qualisys, we should remove all the scatter data in our scatter series
+        for (QScatter3DSeries *series : scatter_->seriesList()) {
+            if (series->name() == "amode3dsignal" || series->name() == "amode3dorigin") {
+                scatter_->removeSeries(series);
+            }
         }
-    }
+    });
 
     // Create a QScatterDataArray to store the origins of the signals.
     // I wrote this outside the loop (below), because i want the scatter for origin point to be one scatter object,
@@ -318,7 +319,7 @@ void VolumeAmodeVisualizer::visualize3DSignal()
 
             // current_amode3dsignal_display.block(0, start_column, 4, arraysize) = currentT_ustip_camera_Qt.at(i).matrix() * amode3dsignal_LH;
             current_amode3dsignal_display.block(0, start_column, 4, arraysize) = currentT_ustip_camera.at(i).matrix() * amode3dsignal_LH;
-        }        
+        }
 
         // This is the QScatterDataArray object for the signal data, each loop will be new object
         QScatterDataArray *dataArray = new QScatterDataArray;
@@ -350,6 +351,7 @@ void VolumeAmodeVisualizer::visualize3DSignal()
             // add the current amode data (series) to our scatter object
             scatter_->addSeries(series);
         });
+
 
         // // Create new series where the QScatterDataArray object will be added
         // QScatter3DSeries *series = new QScatter3DSeries();

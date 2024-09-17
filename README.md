@@ -15,11 +15,48 @@ This is a software that can be used by the user to navigate A-mode ultrasound su
  
 
 ## Dependencies
-1. Qt6 or above, including `3dcore`, `3drender`, `3dinput`, `3dextras`, `datavisualization` modules
-2. [Qualisys-SDK](o%09https://github.com/qualisys/qualisys_cpp_sdk) | Handling the data streaming from Qualisys Motion Capture System.
-3. [Eigen-3.4.0](o%09https://gitlab.com/libeigen/eigen/-/releases/3.4.0) | Handling matrix multiplications for coodinate system transformations.
-4. [Opencv-4.9.0](o%09https://sourceforge.net/projects/opencvlibrary/files/4.9.0/) | Handling image streaming and processing from B-mode US machine. 
-5. [Rapidxml](o%09https://rapidxml.sourceforge.net/) | Parsing the configuration files from fCal to obtain B-mode US calibration matrix.
+1. MSVC2019 installed
+2. Qt6 or above, including `3dcore`, `3drender`, `3dinput`, `3dextras`, `datavisualization` modules
+3. QCustomPlot(o%09https://www.qcustomplot.com/index.php/download) | Handling the visualization of A-mode ultrasound 2D signal
+4. [Qualisys-SDK](o%09https://github.com/qualisys/qualisys_cpp_sdk) | Handling the data streaming from Qualisys Motion Capture System.
+5. [Vicon-SDK](o%09https://www.vicon.com/software/datastream-sdk/) | Handling the data streaming from Vicon Motion Capture System.
+6. [Eigen-3.4.0](o%09https://gitlab.com/libeigen/eigen/-/releases/3.4.0) | Handling matrix multiplications for coodinate system transformations.
+7. [Opencv-4.9.0](o%09https://sourceforge.net/projects/opencvlibrary/files/4.9.0/) | Handling image streaming and processing from B-mode US machine. 
+8. [Rapidxml](o%09https://rapidxml.sourceforge.net/) | Parsing the configuration files from fCal to obtain B-mode US calibration matrix.
 
 ## Installations
-Soon
+
+### qcustomplot
+1. Download QCustomPlot-sharedlib.tar.gz and QCustomPlot-source.tar.gz from their download page
+2. Extract QCustomPlot-sharedlib.tar.gz somewhere (for me, i extract it in C:\ for easy access).
+3. Make sure the directory tree shaped like this: 
+   root_folder/qcustomplot-sharedlib/sharedlib-compilation/
+   root_folder/qcustomplot-sharedlib/sharedlib-usage/
+4. Extract QCustomPlot-source.tar.gz to [root folder]. Make sure the qcustomplot.cpp and qcustomplot.h two directory above sharedlib-compilation.pro. The directory should shape like this:
+   root_folder/qcustomplot-sharedlib
+   root_folder/qcustomplot.cpp
+   root_folder/qcustomplot.h
+5. Open Qt6 and open the sharedlib-compilation.pro project.
+6. Make sure in the project tab (sidebar menu on the left) that the project compiled with MSVC2019. 
+7. Back to edit tab, right click on the project root, click build.
+8. Once built, there will be [root folder]/qcustomplot-sharedlib/sharedlib-compilation/build directory is generated.
+9. Open our Qt6 software project, open the AmodeBmodeMocap.pro
+10. Focus on QCustomPlot part, change the LIBS part to match where your lib files are. It should be like:
+    LIBS += -L"[root folder]/qcustomplot-sharedlib/sharedlib-compilation/build/Desktop\_Qt\_[[version]]\_MSVC2019\_64bit-Debug/debug"
+
+### Qualisys
+
+
+### Vicon
+
+
+### Eigen
+
+
+### OpenCV
+1. Go to opencv download page and download the prebuilt windows version of opencv.
+2. Select the directory of where the opencv library will be extracted.
+3. The library files are in root_folder\opencv\build\x64\vc16\bin. I don't know that it is necessary to add this directory to your system PATH variable, but better do it.  
+4. The header files are in root_folder\opencv\build\include
+5. Open our Qt6 software project, open the AmodeBmodeMocap.pro
+6. Focus on OpenCV part, change the LIBS, INCLUDEPATH, and DEPENDPATH to match where your lib files and header files are. 

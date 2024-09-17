@@ -366,9 +366,9 @@ void Volume3DController::updateVolume(int value)
 
     Eigen::Vector3d minCoords = bordercoordinate_.block<3, 8>(0, 0).rowwise().minCoeff();
     Eigen::Vector3d maxCoords = bordercoordinate_.block<3, 8>(0, 0).rowwise().maxCoeff();
-    m_scatter->axisX()->setRange(minCoords(0)-50, maxCoords(0)+50);
-    m_scatter->axisY()->setRange(minCoords(1), maxCoords(1)+100);
-    m_scatter->axisZ()->setRange(minCoords(2)-50, maxCoords(2)+50);
+    m_scatter->axisX()->setRange(minCoords(0)-200, maxCoords(0)+200);
+    m_scatter->axisY()->setRange(minCoords(1), maxCoords(1)+400);
+    m_scatter->axisZ()->setRange(minCoords(2)-200, maxCoords(2)+200);
 
 }
 
