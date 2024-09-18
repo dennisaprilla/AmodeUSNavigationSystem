@@ -323,8 +323,10 @@ void MainWindow::on_pushButton_bmode2d3d_clicked()
             // if the current combobox index is zero, it means vicon is selected
             if(ui->comboBox_mocapSystem->currentIndex()==0)
             {
-                std::string viconHostname = qualisys_ipstr + std::to_string(qualisys_portushort);
-                // myMocapConnection = new ViconConnection(viconHostname);
+                std::string viconHostname = qualisys_ipstr + ":" + std::to_string(qualisys_portushort);
+                myMocapConnection = new ViconConnection(nullptr, viconHostname);
+                // myMocapConnection->setDataStream("marker");
+                myMocapConnection->startStreaming();
             }
             // if the current combobox index is one, it means qualisys is selected
             else

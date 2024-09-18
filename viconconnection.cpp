@@ -1,6 +1,7 @@
 #include "ViconConnection.h"
 #include <QCoreApplication>
 #include <iostream>
+#include <regex>
 
 // Constructor
 ViconConnection::ViconConnection(QObject *parent, const std::string& hostname)
@@ -96,33 +97,58 @@ void ViconConnection::streamMarker()
         // Get the markers
         unsigned int MarkerCount = ViconClient.GetMarkerCount(SubjectName).MarkerCount;
 
-        // Prepare a matrix to store the markers
-        Eigen::MatrixXd markers;
-        markers.resize(3, 0);
+        // // Prepare a matrix to store the markers
+        // Eigen::MatrixXd markers;
+        // markers.resize(3, 0);
+
+        // Prepare a vector to store the markers object
+        std::vector<ViconConnection::MarkerObject> all_markers;
 
         // Loop trough all the markers
-        for (unsigned int MarkerIndex = 0; MarkerIndex < MarkerCount; ++MarkerIndex)
+        for (unsigned int marker_index = 0; marker_index < MarkerCount; ++marker_index)
         {
-            std::string MarkerName = ViconClient.GetMarkerName(SubjectName, MarkerIndex).MarkerName;
-            auto MarkerTranslation = ViconClient.GetMarkerGlobalTranslation(SubjectName, MarkerName);
+            std::string marker_name = ViconClient.GetMarkerName(SubjectName, marker_index).MarkerName;
+            auto marker_translation = ViconClient.GetMarkerGlobalTranslation(SubjectName, marker_name);
+
             // std::cout << "Marker " << MarkerName << ": ("
             //           << MarkerTranslation.Translation[0] << ", "
             //           << MarkerTranslation.Translation[1] << ", "
             //           << MarkerTranslation.Translation[2] << ")" << std::endl;
 
-            Eigen::VectorXd newMarker(3);
-            newMarker << MarkerTranslation.Translation[0], MarkerTranslation.Translation[1], MarkerTranslation.Translation[2];
-            markers.conservativeResize(Eigen::NoChange, markers.cols() + 1);
-            markers.col(markers.cols() - 1) = newMarker;
+            // Eigen::VectorXd newMarker(3);
+            // newMarker << MarkerTranslation.Translation[0], MarkerTranslation.Translation[1], MarkerTranslation.Translation[2];
+            // markers.conservativeResize(Eigen::NoChange, markers.cols() + 1);
+            // markers.col(markers.cols() - 1) = newMarker;
+
+            // check the validity of the group name and extract the group name
+            std::string marker_group = getMarkerGroupName(marker_name);
+            // assign to a struct and store it in the vector
+            ViconConnection::MarkerObject current_marker(marker_name, marker_group,
+                                                         marker_translation.Translation[0],
+                                                         marker_translation.Translation[1],
+                                                         marker_translation.Translation[2]);
+            all_markers.push_back(current_marker);
         }
 
-        // Calculate rigidbody transformation
-        Eigen::Isometry3d T;
-        try {
-            T = estimateRigidBodyTransformation(markers);
-        } catch (const std::invalid_argument& e) {
-            std::cout << "Caught exception in ViconConnection::streamMarker : " << e.what() << std::endl;
-            continue;
+        // Container to store MarkerObject based on group
+        std::unordered_map<std::string, Eigen::MatrixXd> grouped_markers;
+        // Group MarkerObject and collect their positions
+        groupMarkerObjectByGroup(all_markers, grouped_markers);
+
+        // Loop for each group of markers
+        for (const auto& [group, positions] : grouped_markers) {
+
+            // Calculate rigidbody transformation of the current marker group
+            Eigen::Isometry3d T;
+            try {
+                T = estimateRigidBodyTransformation(positions);
+            } catch (const std::invalid_argument& e) {
+                std::cout << "Caught exception in ViconConnection::streamMarker : " << e.what() << std::endl;
+                continue;
+            }
+
+            // Store the transformation matrix with the transformation manager
+            tmanager.addTransformation(group, T);
         }
 
         // std::cout << "Transformation Matrix:\n";
@@ -132,16 +158,13 @@ void ViconConnection::streamMarker()
         //     }
         //     std::cout << std::endl; // Newline after each row
         // }
-
-        // store the transformation matrix with the transformation manager
-        tmanager.addTransformation(SubjectName, T);
     }
 
     // Once the task is finished, emit the signal
     emit dataReceived(tmanager);
 
     // Sleep to prevent flooding the system with requests
-    QThread::msleep(1000);
+    QThread::msleep(1);
 }
 
 // Streaming function
@@ -217,7 +240,7 @@ void ViconConnection::streamRigidBody()
     }
 
     // Sleep to prevent flooding the system with requests
-    QThread::msleep(1000);
+    QThread::msleep(1);
 
     // Once the task is finished, emit the signal
     emit dataReceived(tmanager);
@@ -292,4 +315,42 @@ Eigen::Isometry3d ViconConnection::estimateRigidBodyTransformation(const Eigen::
 
     // Return the rigid body transformation
     return rigidbodyT;
+}
+
+// https://chatgpt.com/share/66eaa73b-8ac0-8010-a5c9-165cd15f82db
+std::string ViconConnection::getMarkerGroupName(const std::string& input)
+{
+    // Define the regular expression based on the given rules
+    std::regex pattern(R"((A|B)_(T|F|N)_[A-Z]{3}_[1-5])");
+
+    // if does not match, return empty string
+    if(!std::regex_match(input, pattern)) return "INVALID";
+
+    // if match, let's continue, get the last underscore
+    size_t pos = input.rfind('_');
+    // return the group name
+    return (pos != std::string::npos) ? input.substr(0, pos) : input;
+}
+
+// https://chatgpt.com/share/66eaa713-9218-8010-936f-0b608985cb58
+void ViconConnection::groupMarkerObjectByGroup(const std::vector<MarkerObject>& markers, std::unordered_map<std::string, Eigen::MatrixXd>& groupedPositions)
+{
+    std::unordered_map<std::string, std::vector<Eigen::VectorXd>> tempGroups;
+
+    // Group markers by group and collect positions
+    for (const auto& marker : markers) {
+        tempGroups[marker.group].push_back(marker.position);
+    }
+
+    // Convert to Eigen::MatrixXd, each group gets a 3xN matrix
+    for (const auto& [group, positions] : tempGroups) {
+        size_t N = positions.size();
+        Eigen::MatrixXd groupMatrix(3, N);
+
+        for (size_t i = 0; i < N; ++i) {
+            groupMatrix.col(i) = positions[i];
+        }
+
+        groupedPositions[group] = groupMatrix;
+    }
 }

@@ -13,6 +13,7 @@
 #include "qcustomplot.h"
 #include "qcustomplotintervalwindow.h"
 #include "qualisysconnection.h"
+#include "viconconnection.h"
 #include "mhawriter.h"
 #include "mhareader.h"
 #include "volume3dcontroller.h"

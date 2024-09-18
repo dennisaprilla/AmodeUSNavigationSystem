@@ -270,7 +270,7 @@ void Bmode3DVisualizer::onImageReceived(const cv::Mat &image) {
 }
 
 void Bmode3DVisualizer::onRigidBodyReceived(const QualisysTransformationManager &tmanager) {
-    currentTransform = tmanager.getTransformationById("B_PROBE");
+    currentTransform = tmanager.getTransformationById("B_N_PRB");
     rigidbodyReady = true;
     if (imageReady) {
         visualizeImage();
