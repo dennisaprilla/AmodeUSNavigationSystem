@@ -462,7 +462,7 @@ void MainWindow::on_pushButton_mhaRecord_clicked()
         ui->pushButton_mhaRecord->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::ProcessStop));
         // instantiate new mhawriter, with the file name from textfield
         myMHAWriter = new MHAWriter(nullptr, filepath, "SequenceRecording");
-        myMHAWriter->setTransformationID("B_PROBE", "B_REF");
+        myMHAWriter->setTransformationID("B_N_PRB", "B_N_REF");
         // start record (for the moment, inside this function is just a bool indicating that we are recording)
         myMHAWriter->startRecord();
         // connect the bmode and qualisys signal data to the mhawriter data receiving slot

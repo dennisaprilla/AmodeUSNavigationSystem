@@ -142,7 +142,7 @@ private:
     int n_signaldisplay = 1;                                    //!< controls the visualization of the 3d signal. See setSignalDisplayMode() description for detail.
     std::vector<Eigen::Matrix4d> rotation_signaldisplay;        //!< controls the visualization of the 3d signal.
     std::string transformation_id = "";                         //!< The name of the current holder being visualized (relates to its transformation).
-    std::string transformation_ref = "B_REF";                   //!< The name of reference rigid body (the wire calibration thing). The reconstructed bone is in this CS.
+    std::string transformation_ref = "B_N_REF";                 //!< The name of reference rigid body (the wire calibration thing). The reconstructed bone is in this CS.
 
     VolumeAmodeVisualizer *m_visualizer;
     QThread *m_visualizerThread;

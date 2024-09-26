@@ -153,8 +153,8 @@ private:
     QElapsedTimer timestamp;                                    //!< Stores the timestamp has been elapsed.
 
     // variables that is used to grab the necessary rigid bodies
-    std::string bmodeprobe_transformationID_ = "B_PROBE";       //!< Default indentifier for B-mode probe rigid body transformation from the Mocap system
-    std::string bmoderef_transformationID_   = "B_REF";         //!< Default indentifier for Reference rigid body transformation from the Mocap system
+    std::string bmodeprobe_transformationID_ = "B_N_PRB";       //!< Default indentifier for B-mode probe rigid body transformation from the Mocap system
+    std::string bmoderef_transformationID_   = "B_N_REF";       //!< Default indentifier for Reference rigid body transformation from the Mocap system
 
 signals:
 };
