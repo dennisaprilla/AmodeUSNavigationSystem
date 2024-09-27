@@ -88,7 +88,7 @@ private:
 
     // all variables related to amode signal
     int downsample_nsample_;                                    //!< the number of sample after downsampling. used when we do downsample
-    double downsample_ratio = 2.0;                              //!< specifiy the ratio of the downsampling. the default is half less.
+    double downsample_ratio = 4.0;                              //!< specifiy the ratio of the downsampling. the default is half less.
     bool isDownsample       = true;                             //!< a flag to signify the class that we are doing downsampling.
 
     std::vector<AmodeConfig::Data> amodegroupdata_;             //!< Stores the configuration of a-mode group. We need the local transformations.

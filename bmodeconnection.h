@@ -3,6 +3,9 @@
 
 #include <QObject>
 #include <QTimer>
+#include <QThread>
+#include <QMutex>
+#include <QWaitCondition>
 #include <opencv2/opencv.hpp>
 
 /**
@@ -80,7 +83,12 @@ private:
 
     const int MAX_CAMERAS = 10; //!< The maximum number of camera that can be listed
 
-    QTimer *frameTimer;         //!< A timer, in which we will check the arriving image.
+    QTimer frameTimer;          //!< A timer, in which we will check the arriving image.
+    QThread m_workerThread;     //!< Use QThread instead of QTimer
+    QMutex m_mutex;             //!< Mutex variable that keep m_isRunning variable to be accessed by one thread at a time
+    QWaitCondition m_condition; //!< Allows thread to sleep when idle and wake up on demand
+
+    bool m_isRunning = false;   //!< A flag that tells that the thread is running or not
 };
 
 #endif // BMODECONNECTION_H

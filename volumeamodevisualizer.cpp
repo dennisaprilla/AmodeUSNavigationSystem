@@ -458,7 +458,7 @@ void VolumeAmodeVisualizer::processVisualization()
         // i need to implement better multi threading architecture, but i don't want to do it
         // now. It is (somewhat) working to some extent, so be it.
         visualize3DSignal();
-        QThread::msleep(90);
+        QThread::msleep(200);
 
 
         // // After visualization is done, reset the flag4

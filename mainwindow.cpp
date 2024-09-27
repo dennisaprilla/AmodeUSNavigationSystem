@@ -306,7 +306,7 @@ void MainWindow::on_pushButton_bmode2d3d_clicked()
             // myBmodeConnection = new BmodeConnection();
             // std::vector<std::string> allCameraInfo = myBmodeConnection->getAllCameraInfo();
             // Connect the imageProcessed signal to the displayImage slot
-            connect(myBmodeConnection, &BmodeConnection::imageProcessed, this, &MainWindow::displayImage);
+            // connect(myBmodeConnection, &BmodeConnection::imageProcessed, this, &MainWindow::displayImage);
 
             int cameraIndex = ui->comboBox_camera->currentIndex();
             if(myBmodeConnection->openCamera(cameraIndex)) {
@@ -315,6 +315,9 @@ void MainWindow::on_pushButton_bmode2d3d_clicked()
                 // Handle the error (e.g., show a message box)
                 QMessageBox::critical(this, tr("Error"), tr("Unable to open the camera. Please check the camera index and ensure it is connected properly."));
             }
+
+            // Connect the imageProcessed signal to the displayImage slot
+            connect(myBmodeConnection, &BmodeConnection::imageProcessed, this, &MainWindow::displayImage);
 
             /* **********************************************************************************
              * Qualisys / Vicon Stream
@@ -407,7 +410,7 @@ void MainWindow::slotConnect_Bmode2d3d()
     if(myMocapConnection==nullptr || myBmodeConnection==nullptr) return;
 
     connect(myBmodeConnection, &BmodeConnection::imageProcessed, this, &MainWindow::displayImage);
-    connect(myMocapConnection, &MocapConnection::dataReceived, this, &MainWindow::updateQualisysText);
+    // connect(myMocapConnection, &MocapConnection::dataReceived, this, &MainWindow::updateQualisysText);
     connect(myBmodeConnection, &BmodeConnection::imageProcessed, myBmode3Dvisualizer, &Bmode3DVisualizer::onImageReceived);
     connect(myMocapConnection, &MocapConnection::dataReceived, myBmode3Dvisualizer, &Bmode3DVisualizer::onRigidBodyReceived);
 }
@@ -417,7 +420,7 @@ void MainWindow::slotDisconnect_Bmode2d3d()
     if(myMocapConnection==nullptr || myBmodeConnection==nullptr) return;
 
     disconnect(myBmodeConnection, &BmodeConnection::imageProcessed, this, &MainWindow::displayImage);
-    disconnect(myMocapConnection, &MocapConnection::dataReceived, this, &MainWindow::updateQualisysText);
+    // disconnect(myMocapConnection, &MocapConnection::dataReceived, this, &MainWindow::updateQualisysText);
     disconnect(myBmodeConnection, &BmodeConnection::imageProcessed, myBmode3Dvisualizer, &Bmode3DVisualizer::onImageReceived);
     disconnect(myMocapConnection, &MocapConnection::dataReceived, myBmode3Dvisualizer, &Bmode3DVisualizer::onRigidBodyReceived);
 }
