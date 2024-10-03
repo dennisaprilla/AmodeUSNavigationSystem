@@ -362,11 +362,11 @@ void Volume3DController::updateVolume(int value)
     Eigen::Vector3d minCoords = bordercoordinate_.block<3, 8>(0, 0).rowwise().minCoeff();
     Eigen::Vector3d maxCoords = bordercoordinate_.block<3, 8>(0, 0).rowwise().maxCoeff();
     double maxZ_inScatter     = maxCoords(1)+(extensionvolume_mm*2) - minCoords(1);
-    double maxWhite_inScatter = (0.4*maxZ_inScatter)/maxZ_inScatter;
+    double maxWhite_inScatter = (0.25*maxZ_inScatter)/maxZ_inScatter;
 
     QLinearGradient gradient;
     gradient.setColorAt(0.0, QColor(50,50,50));                    // Low values of Z
-    gradient.setColorAt(maxWhite_inScatter, QColor(255,255,255));  // High values of Z
+    gradient.setColorAt(maxWhite_inScatter, QColor(220,220,220));  // High values of Z
 
     // Create a new scatter series
     QScatter3DSeries *series = new QScatter3DSeries();

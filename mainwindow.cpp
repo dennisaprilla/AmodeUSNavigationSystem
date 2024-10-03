@@ -1032,7 +1032,8 @@ void MainWindow::on_comboBox_amodeNumber_textActivated(const QString &arg1)
     myVolumeAmodeController = new VolumeAmodeController(nullptr, scatter, amode_group);
     connect(myMocapConnection, &MocapConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onRigidBodyReceived);
     connect(myAmodeConnection, &AmodeConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onAmodeSignalReceived);
-
+    // don't forget to set which holder should be visualized
+    myVolumeAmodeController->setActiveHolder(arg1.toStdString());
 }
 
 

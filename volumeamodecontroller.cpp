@@ -280,7 +280,7 @@ void VolumeAmodeController::onRigidBodyReceived(const QualisysTransformationMana
 {
     if(transformation_id.empty())
     {
-        std::cerr << "Tranformation id is empty, please use initialize it using setActiveHolder()" << std::endl;
+        std::cerr << "VolumeAmodeController::onRigidBodyReceived() Tranformation id is empty, please use initialize it using setActiveHolder()" << std::endl;
         return;
     }
 
