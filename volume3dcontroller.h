@@ -97,13 +97,14 @@ private:
     std::vector<unsigned char> myMHAVolume_;    //!< A vector that stores the volume
 
     // variables for visualization only
-    QLinearGradient gradient;                   //!< A gradient to color the data points in Q3DScatter
+    // QLinearGradient gradient;                   //!< A gradient to color the data points in Q3DScatter
 
     // pixel information of the volume
     int pixelintensity_max_;                    //!< The maximum value of pixel intensity in the volume
     int pixelintensity_min_;                    //!< The minimum value of pixel intensity in the volume
 
-
+    // volume
+    int extensionvolume_mm = 35;                //!< An dimension extension for volume viusalization
 
 signals:
 };

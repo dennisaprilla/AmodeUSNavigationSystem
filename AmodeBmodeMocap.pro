@@ -57,6 +57,7 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 # QMAKE_CXXFLAGS += -Wa,-mbig-obj
 win32:CONFIG(gcc):QMAKE_CXXFLAGS += -Wa,-mbig-obj
+win32:QMAKE_CXXFLAGS += /openmp
 
 # All additional libraries/SDKs for this project
 INCLUDEPATH += \

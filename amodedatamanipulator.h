@@ -27,6 +27,7 @@ public:
      * @brief A function for downsampling the amode data vector. It takes Eigen::VectorXd and returns Eigen::VectorXd
      */
     static Eigen::VectorXd downsampleVector(const Eigen::VectorXd& input, int targetSize);
+
 };
 
 #endif // AMODEDATAMANIPULATOR_H

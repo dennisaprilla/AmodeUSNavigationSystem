@@ -1,6 +1,7 @@
 #include "amodedatamanipulator.h"
 #include <algorithm>
 #include <cmath>
+#include <omp.h> // Include OpenMP header if using OpenMP functions
 
 QVector<int16_t> AmodeDataManipulator::getRow(const QVector<int16_t>& input, int rowNumber, int totalColumns) {
     int startIndex = rowNumber * totalColumns;
@@ -76,5 +77,4 @@ Eigen::VectorXd AmodeDataManipulator::downsampleVector(const Eigen::VectorXd& in
 
     return output;
 }
-
 

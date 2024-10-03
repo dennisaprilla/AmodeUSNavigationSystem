@@ -16,10 +16,6 @@ Volume3DController::Volume3DController(QObject *parent, Q3DScatter *scatter, MHA
     //    voxels always on top of anything else within the volume of the data.
     // >> So we instead performing a workaround by visualize the bone voxels as a point cloud.
 
-    gradient = *new QLinearGradient();
-    gradient.setColorAt(0.0, QColor(50,50,50)); // Low values of Z
-    gradient.setColorAt(1.0, QColor(255,255,255));  // High values of Z
-
     QSurfaceFormat format;
     format.setSamples(0);
     scatter->setFormat(format);
@@ -70,10 +66,21 @@ void Volume3DController::findIndicesWithThreshold(const std::vector<unsigned cha
 }
 
 void Volume3DController::getValuesWithIndices(const std::vector<unsigned char>& volume, const std::vector<int>& myindices, std::vector<unsigned char>& result) {
+    // #pragma omp parallel for
+    // for (int index : myindices) {
+    //     #pragma omp critical
+    //     result.push_back(volume[index]);
+    // }
+
+    // Resize the result vector to avoid concurrent modification of its size.
+    result.resize(myindices.size());
+
+    // Use a traditional for loop that OpenMP can parallelize.
     #pragma omp parallel for
-    for (int index : myindices) {
-        #pragma omp critical
-        result.push_back(volume[index]);
+    for (int i = 0; i < myindices.size(); ++i) {
+        int index = myindices[i];
+        // Assign the value to the corresponding position in the result vector.
+        result[i] = volume[index];
     }
 }
 
@@ -352,6 +359,15 @@ void Volume3DController::updateVolume(int value)
         (*dataArray)[i].setPosition( QVector3D(bordercoordinate_(0, i),bordercoordinate_(1, i),bordercoordinate_(2, i)));
     }
 
+    Eigen::Vector3d minCoords = bordercoordinate_.block<3, 8>(0, 0).rowwise().minCoeff();
+    Eigen::Vector3d maxCoords = bordercoordinate_.block<3, 8>(0, 0).rowwise().maxCoeff();
+    double maxZ_inScatter     = maxCoords(1)+(extensionvolume_mm*2) - minCoords(1);
+    double maxWhite_inScatter = (0.4*maxZ_inScatter)/maxZ_inScatter;
+
+    QLinearGradient gradient;
+    gradient.setColorAt(0.0, QColor(50,50,50));                    // Low values of Z
+    gradient.setColorAt(maxWhite_inScatter, QColor(255,255,255));  // High values of Z
+
     // Create a new scatter series
     QScatter3DSeries *series = new QScatter3DSeries();
     series->setName("tissue_layers");
@@ -363,12 +379,9 @@ void Volume3DController::updateVolume(int value)
 
     // add the volume to the series
     m_scatter->addSeries(series);
-
-    Eigen::Vector3d minCoords = bordercoordinate_.block<3, 8>(0, 0).rowwise().minCoeff();
-    Eigen::Vector3d maxCoords = bordercoordinate_.block<3, 8>(0, 0).rowwise().maxCoeff();
-    m_scatter->axisX()->setRange(minCoords(0)-50, maxCoords(0)+50);
-    m_scatter->axisY()->setRange(minCoords(1), maxCoords(1)+100);
-    m_scatter->axisZ()->setRange(minCoords(2)-50, maxCoords(2)+50);
+    m_scatter->axisX()->setRange(minCoords(0)-extensionvolume_mm, maxCoords(0)+extensionvolume_mm);
+    m_scatter->axisY()->setRange(minCoords(1), maxCoords(1)+(extensionvolume_mm*2));
+    m_scatter->axisZ()->setRange(minCoords(2)-extensionvolume_mm, maxCoords(2)+extensionvolume_mm);
 
 }
 

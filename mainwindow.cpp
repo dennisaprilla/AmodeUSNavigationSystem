@@ -706,6 +706,17 @@ void MainWindow::volumeReconstructorCmdFinished()
     // manipulate the scatter and decode the data according to the mha
     myVolume3DController = new Volume3DController(nullptr, scatter, myMHAReader);
 
+    // set initial threshold for slider (i copy paste from MainWindow::on_pushButton_volumeLoad_clicked)
+    std::array<int, 2> pixelintensityrange = myVolume3DController->getPixelIntensityRange();
+    int init_range     = pixelintensityrange[1] - pixelintensityrange[0];
+    int init_threshold = pixelintensityrange[0] + (init_range/2);
+    ui->horizontalSlider_volumeThreshold->setMinimum(pixelintensityrange[0]+init_range*0.4);
+    ui->horizontalSlider_volumeThreshold->setMaximum(pixelintensityrange[1]-init_range*0.1);
+    ui->horizontalSlider_volumeThreshold->setSliderPosition(init_threshold);
+    // set the label for slider
+    ui->label_volumePixelValMin->setText(QString::number(pixelintensityrange[0]+init_range*0.4));
+    ui->label_volumePixelValMax->setText(QString::number(pixelintensityrange[1]-init_range*0.1));
+
     // Connect the slider signal to updateVolume, if the user slide the threshold, the volume also change accordingly
     connect(ui->horizontalSlider_volumeThreshold, &QSlider::valueChanged, myVolume3DController, &Volume3DController::updateVolume);
 }
@@ -864,24 +875,32 @@ void MainWindow::displayUSsignal(const std::vector<uint16_t> &usdata_uint16_)
         QVector<int16_t> usdata_qvint16_ (usdata_uint16_.begin(), usdata_uint16_.end());
         // get the current selected group
         std::vector<AmodeConfig::Data> amode_group = myAmodeConfig->getDataByGroupName(ui->comboBox_amodeNumber->currentText().toStdString());
-        // for every element in the selected group...
-        for (size_t i=0; i<amode_group.size(); i++)
+        // create x-axis
+        QVector<double> x(us_dvector_downsampled_.data(), us_dvector_downsampled_.data() + us_dvector_downsampled_.size());
+
+        // for every element in the selected group..
+        // #pragma omp parallel for
+        for (int i = 0; i < static_cast<int>(amode_group.size()); i++)
         {
             // select row
             QVector<int16_t> usdata_qvint16_rowsel = AmodeDataManipulator::getRow(usdata_qvint16_, amode_group.at(i).number-1, myAmodeConnection->getNsample());
+            // skip the data if we got all zeros, usually because of the TCP connection
+            if (usdata_qvint16_rowsel.size()==0) continue;
             // down sample for display purposes
             QVector<int16_t> usdata_qvint16_downsmp = AmodeDataManipulator::downsampleVector(usdata_qvint16_rowsel, downsample_nsample_);
-            // skip the data if we got all zeros, usually because of the TCP connection
-            if (usdata_qvint16_rowsel.size()==0) return;
             // convert to double
             QVector<double> usdata_qvdouble;
             std::transform(usdata_qvint16_downsmp.begin(), usdata_qvint16_downsmp.end(), std::back_inserter(usdata_qvdouble), [] (double value) { return static_cast<double>(value); });
 
-            // create x-axis
-            QVector<double> x(us_dvector_downsampled_.data(), us_dvector_downsampled_.data() + us_dvector_downsampled_.size());
-            // draw the plot
+            // plot the data
             amodePlots.at(i)->graph(0)->setData(x, usdata_qvdouble);
             amodePlots.at(i)->replot();
+
+            // // Use QMetaObject::invokeMethod to safely update GUI in the main thread
+            // QMetaObject::invokeMethod(this, [=]() {
+            //         amodePlots.at(i)->graph(0)->setData(x, usdata_qvdouble);
+            //         amodePlots.at(i)->replot();
+            //     }, Qt::QueuedConnection);
         }
     }
 }
