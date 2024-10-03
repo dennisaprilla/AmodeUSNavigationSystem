@@ -110,7 +110,10 @@ MainWindow::~MainWindow()
 
 void MainWindow::displayImage(const cv::Mat &image) {
     // Convert the cv::Mat to a QImage
-    QImage qImage(image.data, image.cols, image.rows, image.step, QImage::Format_Grayscale8);
+    // QImage qImage(image.data, image.cols, image.rows, image.step, QImage::Format_Grayscale8);
+
+    QImage qImage(image.cols, image.rows, QImage::Format_Grayscale8);
+    memcpy(qImage.bits(), image.data, static_cast<size_t>(image.cols * image.rows));
 
     // Convert the QImage to a QPixmap and scale it to fit the QLabel while maintaining the aspect ratio
     QPixmap pixmap = QPixmap::fromImage(qImage);
@@ -119,6 +122,7 @@ void MainWindow::displayImage(const cv::Mat &image) {
         bmode2dvisheight = ui->label_imageDisplay->size().height();
         isBmode2dFirstStream = false;
     }
+
     QPixmap pixmap_scaled = pixmap.scaledToHeight(bmode2dvisheight);
     ui->label_imageDisplay->setPixmap(pixmap_scaled);
 }

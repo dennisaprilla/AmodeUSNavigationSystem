@@ -455,19 +455,19 @@
               </widget>
              </item>
              <item>
+              <widget class="QCheckBox" name="checkBox_autoReconstruct">
+               <property name="text">
+                <string>Auto Reconstruct</string>
+               </property>
+              </widget>
+             </item>
+             <item>
               <widget class="QPushButton" name="pushButton_mhaRecord">
                <property name="text">
                 <string>Record</string>
                </property>
                <property name="icon">
                 <iconset theme="media-record"/>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QCheckBox" name="checkBox_autoReconstruct">
-               <property name="text">
-                <string>Auto Reconstruct</string>
                </property>
               </widget>
              </item>

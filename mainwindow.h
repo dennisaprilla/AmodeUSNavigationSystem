@@ -95,7 +95,7 @@ private:
     Eigen::VectorXd us_dvector_downsampled_;    //!< Same as us_dvector_, but downsampled
     Eigen::VectorXd us_tvector_;                //!< Stores the array of time, used by plots
     Eigen::VectorXd us_tvector_downsampled_;    //!< Same as us_tvector_, but downsampled
-    double downsample_ratio_ = 4.0;             //!< Downsample ratio, used to reduce the amount of data being visualized in 2d plots
+    double downsample_ratio_ = 7.0;             //!< Downsample ratio, used to reduce the amount of data being visualized in 2d plots
     int downsample_nsample_;                    //!< The real length of the downsampled array
 
     bool isMHArecord            = true;         //!< Flag to inform whether we are ready for recording MHA or not

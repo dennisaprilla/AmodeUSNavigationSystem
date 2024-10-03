@@ -209,7 +209,7 @@ void Bmode3DVisualizer::initializeScene()
     Qt3DRender::QCamera *cameraEntity = view->camera();
     cameraEntity->setPosition(QVector3D(10.0f, 10.0f, 10.0f));
     cameraEntity->setViewCenter(QVector3D(0, 0, 0));
-    cameraEntity->setUpVector(QVector3D(0, 1, 0));
+    cameraEntity->setUpVector(QVector3D(0, 0, 1));
     cameraEntity->setNearPlane(0.1f);
     cameraEntity->setFarPlane(1000.0f);
     cameraEntity->setFieldOfView(25.0f);
@@ -248,7 +248,7 @@ void Bmode3DVisualizer::initializeScene()
     groundMesh->setWidth(10);
     groundMesh->setHeight(10);
     Qt3DCore::QTransform *groundTransform = new Qt3DCore::QTransform();
-    // groundTransform->setRotation(QQuaternion::fromEulerAngles(90.0f, 0.0f, 0.0f));
+    groundTransform->setRotation(QQuaternion::fromEulerAngles(90.0f, 0.0f, 0.0f));
     // groundTransform->setTranslation(QVector3D(0.1f, 0.0f, 0.0f));
     Qt3DExtras::QPhongMaterial *groundMaterial  = new Qt3DExtras::QPhongMaterial();
     groundMaterial->setDiffuse(QColor(QRgb(0x3498db)));
@@ -270,7 +270,20 @@ void Bmode3DVisualizer::onImageReceived(const cv::Mat &image) {
 }
 
 void Bmode3DVisualizer::onRigidBodyReceived(const QualisysTransformationManager &tmanager) {
-    currentTransform = tmanager.getTransformationById("B_N_PRB");
+    // currentTransform = tmanager.getTransformationById("B_N_PRB");
+
+    try
+    {
+        Eigen::Isometry3d currentT_ref_camera = tmanager.getTransformationById(transformationID_ref);
+        Eigen::Isometry3d currentT_holder_camera = tmanager.getTransformationById(transformationID_probe);
+        currentTransform = currentT_ref_camera.inverse() * currentT_holder_camera;
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "An exception occurred: " << e.what() << std::endl;
+        return;
+    }
+
     rigidbodyReady = true;
     if (imageReady) {
         visualizeImage();
@@ -412,6 +425,7 @@ QImage Bmode3DVisualizer::cvMatToQImage(const cv::Mat &mat) {
 // Function to convert Eigen::Isometry3d to QMatrix4x4
 QMatrix4x4 Bmode3DVisualizer::eigenToQMatrix(const Eigen::Isometry3d &eigen_mat) {
 
+    /*
     // These process below is the adjustment of the coordinate system. This is needed
     // because Qualisys has different rules of 3D visualization compared Qt3DCore:
     // a) Qualisys has a right hand rule rotation, Qt3Dcore left hand rule rotation
@@ -447,6 +461,7 @@ QMatrix4x4 Bmode3DVisualizer::eigenToQMatrix(const Eigen::Isometry3d &eigen_mat)
     qt_T.setColumn(3, QVector4D(VIZ_SCALE*qt_t, 1.0f));
 
     return qt_T;
+    */
 
 
     /* This block is my attempt to do the same thing as the current working code but in quaternion without
@@ -472,9 +487,9 @@ QMatrix4x4 Bmode3DVisualizer::eigenToQMatrix(const Eigen::Isometry3d &eigen_mat)
     return qt_T;
     */
 
-    /* This block is the original one, in which i was confuse why the visualisation in Qt is different
-     * when i compare it with Qualisys interface
-     *
+    // /* This block is the original one, in which i was confuse why the visualisation in Qt is different
+    //  * when i compare it with Qualisys interface
+    //  *
     // Convert to Matrix4f
     Eigen::Matrix4f mat = eigen_mat.matrix().cast<float>();
 
@@ -487,10 +502,10 @@ QMatrix4x4 Bmode3DVisualizer::eigenToQMatrix(const Eigen::Isometry3d &eigen_mat)
     currentQMat.setColumn(3, QVector4D(VIZ_SCALE*translation, 1.0f));
 
     return currentQMat;
-    */
+    // */
 }
 
-// Function to swap rotation order but with quaternion instead of involving conversion to euler angles
+// [Deprecated] Function to swap rotation order but with quaternion instead of involving conversion to euler angles
 Eigen::Quaterniond Bmode3DVisualizer::swapQuaternionOrderXYZtoZYX(const Eigen::Quaterniond& q, bool invert) {
     // Extract Z rotation
     double qz_w = std::sqrt(q.w() * q.w() + q.z() * q.z());

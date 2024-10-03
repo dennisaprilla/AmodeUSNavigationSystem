@@ -185,6 +185,9 @@ private:
     Qt3DCore::QTransform         *probeBaseTransform;   //!< Base transformation of the probe, need to be adjusted first because the way the mesh was oriented originally from blender
     Qt3DExtras::QPhongMaterial   *probeMaterial;        //!< The default texture component of probeEntity
 
+    std::string transformationID_probe = "B_N_PRB";
+    std::string transformationID_ref = "B_N_REF";
+
 };
 
 #endif // BMODE3DVISUALIZER_H
