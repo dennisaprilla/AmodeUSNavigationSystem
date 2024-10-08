@@ -8,9 +8,9 @@
 VolumeAmodeVisualizer::VolumeAmodeVisualizer(QObject *parent, Q3DScatter *scatter, std::vector<AmodeConfig::Data> amodegroupdata)
     : QObject(parent), stopVisualization(false), isVisualizing(false), hasNewData(false), scatter_(scatter), amodegroupdata_(amodegroupdata)
 {
-    // Calculate necessary constants
-    us_dvector_             = Eigen::VectorXd::LinSpaced(UltrasoundConfig::N_SAMPLE, 1, UltrasoundConfig::N_SAMPLE) * UltrasoundConfig::DS;             // [[mm]]
-    us_tvector_             = Eigen::VectorXd::LinSpaced(UltrasoundConfig::N_SAMPLE, 1, UltrasoundConfig::N_SAMPLE) * UltrasoundConfig::DT * 1000000;   // [[mu s]]
+    // Calculate necessary constants, will be used later for signal visualization
+    us_dvector_ = Eigen::VectorXd::LinSpaced(UltrasoundConfig::N_SAMPLE, 1, UltrasoundConfig::N_SAMPLE) * UltrasoundConfig::DS;             // [[mm]]
+    us_tvector_ = Eigen::VectorXd::LinSpaced(UltrasoundConfig::N_SAMPLE, 1, UltrasoundConfig::N_SAMPLE) * UltrasoundConfig::DT * 1000000;   // [[mu s]]
 
     // I added option to downsample, for visualization performance
     if (isDownsample)
@@ -65,17 +65,20 @@ Eigen::Isometry3d VolumeAmodeVisualizer::RightToLeftHandedTransformation(const E
     // Start by copying the input transformation
     Eigen::Isometry3d leftHandedTransform = rightHandedTransform;
 
+    // First attempt
     // leftHandedTransform.linear()(0, 2) *= -1.0;
     // leftHandedTransform.linear()(1, 2) *= -1.0;
     // leftHandedTransform.linear()(2, 0) *= -1.0;
     // leftHandedTransform.linear()(2, 1) *= -1.0;
 
+    // Second attempt
     // leftHandedTransform.linear()(0, 0) *= -1.0;
     // leftHandedTransform.linear()(0, 1) *= -1.0;
     // leftHandedTransform.linear()(1, 0) *= -1.0;
     // leftHandedTransform.linear()(1, 1) *= -1.0;
     // leftHandedTransform.linear()(2, 2) *= -1.0;
 
+    // Third attempt
     // leftHandedTransform.linear()(0, 1) *= -1.0;
     // leftHandedTransform.linear()(0, 2) *= -1.0;
     // leftHandedTransform.linear()(1, 0) *= -1.0;
@@ -83,18 +86,19 @@ Eigen::Isometry3d VolumeAmodeVisualizer::RightToLeftHandedTransformation(const E
     // leftHandedTransform.linear()(1, 2) *= -1.0;
     // leftHandedTransform.linear()(2, 1) *= -1.0;
 
+    // Fourth attempt
     // leftHandedTransform.linear()(0, 0) *= -1.0;
     // leftHandedTransform.linear()(0, 1) *= -1.0;
     // leftHandedTransform.linear()(1, 0) *= -1.0;
     // leftHandedTransform.linear()(1, 1) *= -1.0;
 
+    // Fifth attempt, this is the correct one
     leftHandedTransform.linear()(0, 0) *= -1.0;
     leftHandedTransform.linear()(0, 1) *= -1.0;
     leftHandedTransform.linear()(0, 2) *= -1.0;
     leftHandedTransform.linear()(1, 0) *= -1.0;
     leftHandedTransform.linear()(1, 1) *= -1.0;
     leftHandedTransform.linear()(1, 2) *= -1.0;
-
     // Negate the Z component of the translation vector
     leftHandedTransform.translation()(2) *= -1.0;
 
@@ -157,29 +161,29 @@ void VolumeAmodeVisualizer::setSignalDisplayMode(int mode)
 
 void VolumeAmodeVisualizer::updateTransformations(Eigen::Isometry3d currentT_holder_camera)
 {
-    // Make base transformation
-    Eigen::Vector3d init_t(0,0,0);
-    Eigen::Matrix3d init_R = Eigen::AngleAxisd(-M_PI / 2, Eigen::Vector3d::UnitX()).toRotationMatrix();
-    Eigen::Isometry3d init_A = Eigen::Isometry3d::Identity();
-    init_A.linear()      = init_R;
-    init_A.translation() = init_t;
-    // Convert the transformation from right-hand (Qualisys) to left-hand (Qt3DScatter plot)
-    Eigen::Isometry3d init_A_LH   = RightToLeftHandedTransformation(init_A);
+    // // Make base transformation
+    // Eigen::Vector3d init_t(0,0,0);
+    // Eigen::Matrix3d init_R = Eigen::AngleAxisd(-M_PI / 2, Eigen::Vector3d::UnitX()).toRotationMatrix();
+    // Eigen::Isometry3d init_A = Eigen::Isometry3d::Identity();
+    // init_A.linear()      = init_R;
+    // init_A.translation() = init_t;
+    // // Convert the transformation from right-hand (Qualisys) to left-hand (Qt3DScatter plot)
+    // Eigen::Isometry3d init_A_LH   = RightToLeftHandedTransformation(init_A);
 
-    // Convert the coordinate system here, from RHR (Qualisys) to LHR (Qt)
-    // This process ensure that what we see in Qualisys is identical with what we see here
-    Eigen::Isometry3d currentT_holder_camera_LH = RightToLeftHandedTransformation(currentT_holder_camera);
+    // // Convert the coordinate system here, from RHR (Qualisys) to LHR (Qt)
+    // // This process ensure that what we see in Qualisys is identical with what we see here
+    // Eigen::Isometry3d currentT_holder_camera_LH = RightToLeftHandedTransformation(currentT_holder_camera);
 
-    // get the current transformation matrix from qualisys
-    Eigen::Matrix3d tmp_R = currentT_holder_camera_LH.rotation();
-    Eigen::Vector3d tmp_t = currentT_holder_camera_LH.translation();
+    // // get the current transformation matrix from qualisys
+    // Eigen::Matrix3d tmp_R = currentT_holder_camera_LH.rotation();
+    // Eigen::Vector3d tmp_t = currentT_holder_camera_LH.translation();
 
-    // initialize transformation matrix for Qt. In Qt, the representation of rotation matrix
-    // is different. You need to transpose it so that it will be the same as representation in Eigen.
-    Eigen::Isometry3d currentT_holder_camera_Qt    = Eigen::Isometry3d::Identity();
-    Eigen::Isometry3d currentT_holder_camera_Qt_LH = Eigen::Isometry3d::Identity();
-    currentT_holder_camera_Qt_LH.linear()          = tmp_R.transpose();
-    currentT_holder_camera_Qt_LH.translation()     = tmp_t;
+    // // initialize transformation matrix for Qt. In Qt, the representation of rotation matrix
+    // // is different. You need to transpose it so that it will be the same as representation in Eigen.
+    // Eigen::Isometry3d currentT_holder_camera_Qt    = Eigen::Isometry3d::Identity();
+    // Eigen::Isometry3d currentT_holder_camera_Qt_LH = Eigen::Isometry3d::Identity();
+    // currentT_holder_camera_Qt_LH.linear()          = tmp_R.transpose();
+    // currentT_holder_camera_Qt_LH.translation()     = tmp_t;
 
     // update the T_ustip_holder. Loop for each ustip inside the holder
     for(std::size_t i = 0; i < amodegroupdata_.size(); ++i)
@@ -202,25 +206,26 @@ void VolumeAmodeVisualizer::updateTransformations(Eigen::Isometry3d currentT_hol
         currentT_ustip_holder.linear() = local_R_matrix;
         currentT_ustip_holder.translation() = local_t;
 
-        // now, do the same thing also but for Qt matrix representation
-        Eigen::Isometry3d currentT_ustip_holder_Qt = Eigen::Isometry3d::Identity();
-        currentT_ustip_holder_Qt.linear() = local_R_matrix.transpose();
-        currentT_ustip_holder_Qt.translation() = local_t;
+        // // now, do the same thing also but for Qt matrix representation
+        // Eigen::Isometry3d currentT_ustip_holder_Qt = Eigen::Isometry3d::Identity();
+        // currentT_ustip_holder_Qt.linear() = local_R_matrix.transpose();
+        // currentT_ustip_holder_Qt.translation() = local_t;
 
-        // Convert the coordinate system here, from RHR (Qualisys) to LHR (Qt)
-        // This process ensure that what we see in Qualisys is identical with what we see here
-        Eigen::Isometry3d currentT_ustip_holder_LH = RightToLeftHandedTransformation(currentT_ustip_holder);
-        Eigen::Isometry3d currentT_ustip_holder_Qt_LH = RightToLeftHandedTransformation(currentT_ustip_holder_Qt);
+        // // Convert the coordinate system here, from RHR (Qualisys) to LHR (Qt)
+        // // This process ensure that what we see in Qualisys is identical with what we see here
+        // Eigen::Isometry3d currentT_ustip_holder_LH = RightToLeftHandedTransformation(currentT_ustip_holder);
+        // Eigen::Isometry3d currentT_ustip_holder_Qt_LH = RightToLeftHandedTransformation(currentT_ustip_holder_Qt);
 
         // store everything to our vectors. Transformation is now updated
-        // currentT_ustip_camera.at(i) = init_A_LH * currentT_holder_camera_LH * currentT_ustip_holder_LH;
+        // this one with LH and with init_A
         // currentT_ustip_camera_Qt.at(i) = init_A_LH * currentT_holder_camera_Qt_LH * currentT_ustip_holder_Qt_LH;
-
-        // currentT_ustip_camera.at(i) = currentT_holder_camera_LH * currentT_ustip_holder_LH;
+        // currentT_ustip_camera.at(i) = init_A_LH * currentT_holder_camera_LH * currentT_ustip_holder_LH;
+        // this one with LH
         // currentT_ustip_camera_Qt.at(i) = currentT_holder_camera_Qt_LH * currentT_ustip_holder_Qt_LH;
+        // currentT_ustip_camera.at(i) = currentT_holder_camera_LH * currentT_ustip_holder_LH;
 
+        // currentT_ustip_camera_Qt.at(i) = currentT_holder_camera_Qt * currentT_ustip_holder_Qt;
         currentT_ustip_camera.at(i) = currentT_holder_camera * currentT_ustip_holder;
-        currentT_ustip_camera_Qt.at(i) = currentT_holder_camera_Qt * currentT_ustip_holder_Qt;
     }
 }
 
@@ -229,15 +234,12 @@ void VolumeAmodeVisualizer::visualize3DSignal()
     // update all necessary transformations
     updateTransformations(currentT_holder_camera);
 
-    // [prototyping]
-    int offset_x = 0;
-    int offset_y = 0;
-    int offset_z = 0;
-
-
+    // Delete all the series inside the scatter. So everytime there is a new rigidbody data coming
+    // from qualisys, we should remove all the scatter data in our scatter series
+    // [Extra note]
+    // >> I need this QMetaObject::invokeMethod because scatter_ object is in the main thread, i can't access it directly
+    // >> because this class is meant to be run in another thread. This is the way to access it
     QMetaObject::invokeMethod(scatter_, [this]() {
-        // delete all the series inside the scatter. So everytime there is a new rigidbody data coming
-        // from qualisys, we should remove all the scatter data in our scatter series
         for (QScatter3DSeries *series : scatter_->seriesList()) {
             if (series->name() == "amode3dsignal" || series->name() == "amode3dorigin") {
                 scatter_->removeSeries(series);
@@ -250,6 +252,7 @@ void VolumeAmodeVisualizer::visualize3DSignal()
     // so that i could set the configuration of the visualization as a group
     QScatterDataArray *originArray = new QScatterDataArray;
     originArray->resize(amodegroupdata_.size());
+    // originArray->resize(amodegroupdata_.size()+1);      // i add +1 for origin of the holder
 
     // For the case of scatter for the signal data themshelves, i will make them separately,
     // each signal has its own scatter object, so that i could make differentiation in color for each signal.
@@ -267,28 +270,9 @@ void VolumeAmodeVisualizer::visualize3DSignal()
         {
             // downsample
             QVector<int16_t> usdata_qvint16_downsmp = AmodeDataManipulator::downsampleVector(amodesignal_rowsel, round((double)UltrasoundConfig::N_SAMPLE / downsample_ratio));
-
-            // // Let's check if the size of usdata_qvint16_downsmp different than amode3dsignal_.row(0), if it is different,
-            // // it will be a disaster when i want to assign the value of usdata_qvint16_downsmp to amode3dsignal_.row(0)
-            // //
-            // // And why the hell, you ask, do we need to do this whereas we downsample the same value to both usdata_qvint16_downsmp and amode3dsignal_.row(0)?
-            // // The answer is i don't fucking know. It annoys me so much.
-            // // What i can say, most probably, it because the implementation of downsampleVector() for QVector<int16_t> is for speed, not for downsampling accuracy.
-            // // This block of code is super ugly, but who cares. It works. That's all we need. Bye.
-            // if (usdata_qvint16_downsmp.size() != amode3dsignal_.row(0).size())
-            // {
-            //     int diff = usdata_qvint16_downsmp.size() - amode3dsignal_.row(0).size();
-            //     if (diff > 0)
-            //         for (int j=0; j<abs(diff); j++) usdata_qvint16_downsmp.removeLast();
-            //     else
-            //     {
-            //         for (int j=0; j<abs(diff); j++) usdata_qvint16_downsmp.append(usdata_qvint16_downsmp.last());
-            //     }
-            // }
-
             // convert to Eigen::VectorXd
             amodesignal_rowsel_eigenVector = Eigen::Map<const Eigen::Matrix<int16_t, Eigen::Dynamic, 1>>(usdata_qvint16_downsmp.constData(), usdata_qvint16_downsmp.size()).cast<double>();
-            // remove the near field disturbance
+            // remove the near field disturbance (first few sample in the signal has a really big amplitude but have no meaning)
             int idx_new = round(double(idx) / downsample_ratio);
             amodesignal_rowsel_eigenVector.head(idx_new).setZero();
         }
@@ -296,18 +280,18 @@ void VolumeAmodeVisualizer::visualize3DSignal()
         {
             // convert to Eigen::VectorXd
             amodesignal_rowsel_eigenVector = Eigen::Map<const Eigen::Matrix<int16_t, Eigen::Dynamic, 1>>(amodesignal_rowsel.constData(), amodesignal_rowsel.size()).cast<double>();
-            // remove the near field disturbance
+            // remove the near field disturbance (first few sample in the signal has a really big amplitude but have no meaning)
             amodesignal_rowsel_eigenVector.head(idx).setZero();
         }
 
         // store it to our amode3dsignal_
         amode3dsignal_.row(0) = amodesignal_rowsel_eigenVector * 0.001; // x-coordinate
 
-        // convert the points to accomodate RHR to LHR transformation
-        Eigen::Matrix<double, 4, Eigen::Dynamic> amode3dsignal_LH;
-        amode3dsignal_LH.resize(4, amode3dsignal_.cols());
-        amode3dsignal_LH = amode3dsignal_;
-        amode3dsignal_LH.row(2) *= -1;
+        // // convert the points to accomodate RHR to LHR transformation
+        // Eigen::Matrix<double, 4, Eigen::Dynamic> amode3dsignal_LH;
+        // amode3dsignal_LH.resize(4, amode3dsignal_.cols());
+        // amode3dsignal_LH = amode3dsignal_;
+        // amode3dsignal_LH.row(2) *= -1;
 
         // Get the size of the data (that is the samples in the signal)
         int arraysize = amode3dsignal_.cols();
@@ -319,14 +303,13 @@ void VolumeAmodeVisualizer::visualize3DSignal()
         for (std::size_t j = 0; j < rotation_signaldisplay.size(); ++j)
         {
             int start_column = j*arraysize;
-            // current_amode3dsignal_display.block(0, start_column, 4, arraysize) = currentT_ustip_camera_Qt.at(i).matrix() * rotation_signaldisplay.at(j) * amode3dsignal_;
 
+            // current_amode3dsignal_display.block(0, start_column, 4, arraysize) = currentT_ustip_camera_Qt.at(i).matrix() * rotation_signaldisplay.at(j) * amode3dsignal_;
             // current_amode3dsignal_display.block(0, start_column, 4, arraysize) = currentT_ustip_camera_Qt.at(i).matrix() * amode3dsignal_LH;
             // current_amode3dsignal_display.block(0, start_column, 4, arraysize) = currentT_ustip_camera.at(i).matrix() * amode3dsignal_LH;
             current_amode3dsignal_display.block(0, start_column, 4, arraysize) = currentT_ustip_camera.at(i).matrix() * amode3dsignal_;
         }
         current_amode3dsignal_display.row(1).swap(current_amode3dsignal_display.row(2));
-
 
         // This is the QScatterDataArray object for the signal data, each loop will be new object
         QScatterDataArray *dataArray = new QScatterDataArray;
@@ -336,18 +319,21 @@ void VolumeAmodeVisualizer::visualize3DSignal()
         // We need to copy copy the points from the Eigen matrix to the QScatterDataArray one by one
         // There is no other way, this is bullshit from QtDataVisualization, i hate it so much
         for (int j = 0; j < arraysize * n_signaldisplay; ++j) {
-
-            (*dataArray)[j].setPosition( QVector3D(current_amode3dsignal_display(0, j) +offset_x,
-                                                  current_amode3dsignal_display(1, j) +offset_y,
-                                                  current_amode3dsignal_display(2, j) +offset_z));
+            (*dataArray)[j].setPosition( QVector3D(current_amode3dsignal_display(0, j),
+                                                  current_amode3dsignal_display(1, j),
+                                                  current_amode3dsignal_display(2, j)));
         }
 
         // Using this loop, i will add data to my originArray, that is the first data in the signal.
         // To be honest, it is not exactly the origin of the signal, but hey, who the fuck can see 0.01 mm differences in the visualization?
-        (*originArray)[i].setPosition( QVector3D(current_amode3dsignal_display(0, 0) +offset_x,
-                                                current_amode3dsignal_display(1, 0) +offset_y,
-                                                current_amode3dsignal_display(2, 0) +offset_z));
+        (*originArray)[i].setPosition( QVector3D(current_amode3dsignal_display(0, 0),
+                                                current_amode3dsignal_display(1, 0),
+                                                current_amode3dsignal_display(2, 0)));
 
+        // Create new series where the QScatterDataArray object will be added
+        // [Extra note]
+        // >> I need this QMetaObject::invokeMethod because scatter_ object is in the main thread, i can't access it directly
+        // >> because this class is meant to be run in another thread. This is the way to access it
         QMetaObject::invokeMethod(scatter_, [this, dataArray]() {
             QScatter3DSeries *series = new QScatter3DSeries();
             series->setName("amode3dsignal");
@@ -371,6 +357,14 @@ void VolumeAmodeVisualizer::visualize3DSignal()
         // scatter_->addSeries(series);
     }
 
+    // (*originArray)[rotation_signaldisplay.size()].setPosition(QVector3D(currentT_holder_camera.translation()[0],
+    //                                                                currentT_holder_camera.translation()[1],
+    //                                                                currentT_holder_camera.translation()[2]));
+
+    // Now, i want to create new series for my originData
+    // [Extra note]
+    // >> I need this QMetaObject::invokeMethod because scatter_ object is in the main thread, i can't access it directly
+    // >> because this class is meant to be run in another thread. This is the way to access it
     QMetaObject::invokeMethod(scatter_, [this, originArray]() {
         QScatter3DSeries *series = new QScatter3DSeries();
         series->setName("amode3dorigin");
@@ -397,31 +391,34 @@ void VolumeAmodeVisualizer::visualize3DSignal()
 
 void VolumeAmodeVisualizer::setData(const QVector<int16_t>& data_amode, const Eigen::Isometry3d& data_rigidbody)
 {
-    qDebug() << "setAmodeSignal called in thread:" << QThread::currentThread();
-    qDebug() << "Expected worker thread:" << this->thread();
+    qDebug() << "VolumeAmodeVisualizer::setData() setAmodeSignal called in thread:" << QThread::currentThread();
+    qDebug() << "VolumeAmodeVisualizer::setData() Expected worker thread:" << this->thread();
+    qDebug() << "VolumeAmodeVisualizer::setData() called, visualizing status: " << isVisualizing;
 
     QMutexLocker locker(&mutex);
-    qDebug() << "VolumeAmodeVisualizer::setData| setData called | " << isVisualizing;
 
     // If visualization is in progress, ignore the new data
     if (isVisualizing) return;
 
-    qDebug() << "VolumeAmodeVisualizer::setData| visualization is idle, set the data";
+    qDebug() << "VolumeAmodeVisualizer::setData() visualization is idle, set the data";
 
+    // set the data
     amodesignal_ = data_amode;
     currentT_holder_camera = data_rigidbody;
 
-    hasNewData = true;      // Set the flag to indicate new data has arrived
-    // condition.wakeOne();    // Wake up the thread if it was waiting
+    // Set the flag to indicate new data has arrived
+    hasNewData = true;
+    // Wake up the thread if it was waiting
+    // condition.wakeOne();
 }
 
 void VolumeAmodeVisualizer::test(const QVector<int16_t>& data_amode, const Eigen::Isometry3d& data_rigidbody)
 {
-    // qDebug() << "VolumeAmodeVisualizer::test| got paired data";
+    // qDebug() << "VolumeAmodeVisualizer::test() got paired data";
 
     if(isVisualizing)
     {
-        // qDebug() << "VolumeAmodeVisualizer::test| but it still visualizing, ignore";
+        // qDebug() << "VolumeAmodeVisualizer::test() but it still visualizing, ignore";
         return;
     }
 
@@ -448,7 +445,7 @@ void VolumeAmodeVisualizer::processVisualization()
         QMutexLocker locker(&mutex);
 
         // // Set flag to indicate visualization is in progress
-        // qDebug() << "VolumeAmodeVisualizer::processVisualization| start visualization";
+        // qDebug() << "VolumeAmodeVisualizer::processVisualization() start visualization";
         isVisualizing = true;
 
         // Perform visualization task
@@ -462,7 +459,7 @@ void VolumeAmodeVisualizer::processVisualization()
 
 
         // // After visualization is done, reset the flag4
-        // qDebug() << "VolumeAmodeVisualizer::processVisualization| finish visualization";
+        // qDebug() << "VolumeAmodeVisualizer::processVisualization() finish visualization";
         hasNewData = false;
         isVisualizing = false;
     }

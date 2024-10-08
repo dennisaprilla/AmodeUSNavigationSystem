@@ -11,6 +11,15 @@
 
 #include "amodeconfig.h"
 
+/**
+ * @class VolumeAmodeVisualizer
+ * @brief The actual visualization class, which should be run in a thread by VolumeAmodeController
+ *
+ * The context of this class can be found in VolumeAmodeController class. In short we want to visualize
+ * 3d amode signal using 3d scatter plot. It is a heavy task, such that i need to separate the visualization
+ * to a different thread
+ *
+ */
 class VolumeAmodeVisualizer : public QObject
 {
     Q_OBJECT
