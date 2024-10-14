@@ -36,7 +36,7 @@ Volume3DController::Volume3DController(QObject *parent, Q3DScatter *scatter, MHA
     }
 
     // initial pixel intensity
-    int init_threshold = pixelintensity_min_ + ((pixelintensity_max_ - pixelintensity_min_)/2);
+    int init_threshold = pixelintensity_min_ + ((pixelintensity_max_ - pixelintensity_min_)/3);
     // add data
     updateVolume(init_threshold);
 }

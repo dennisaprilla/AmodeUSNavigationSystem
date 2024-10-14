@@ -584,11 +584,11 @@ void MainWindow::on_pushButton_volumeLoad_clicked()
     std::array<int, 2> pixelintensityrange = myVolume3DController->getPixelIntensityRange();
     int init_range     = pixelintensityrange[1] - pixelintensityrange[0];
     int init_threshold = pixelintensityrange[0] + (init_range/2);
-    ui->horizontalSlider_volumeThreshold->setMinimum(pixelintensityrange[0]+init_range*0.4);
+    ui->horizontalSlider_volumeThreshold->setMinimum(pixelintensityrange[0]+init_range*0.1);
     ui->horizontalSlider_volumeThreshold->setMaximum(pixelintensityrange[1]-init_range*0.1);
     ui->horizontalSlider_volumeThreshold->setSliderPosition(init_threshold);
     // set the label for slider
-    ui->label_volumePixelValMin->setText(QString::number(pixelintensityrange[0]+init_range*0.4));
+    ui->label_volumePixelValMin->setText(QString::number(pixelintensityrange[0]+init_range*0.1));
     ui->label_volumePixelValMax->setText(QString::number(pixelintensityrange[1]-init_range*0.1));
 
     // Connect the slider signal to updateVolume, if the user slide the threshold, the volume also change accordingly    
