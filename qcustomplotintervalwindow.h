@@ -39,6 +39,11 @@ public:
     void setInitialLines(std::array<std::optional<double>, 3> window);
 
     /**
+     * @brief Set the plot id (can be used to differentiate plot if they were stored in an array)
+     */
+    void setPlotId(int id);
+
+    /**
      * @brief Get the lines positions which defines the window
      */
     std::array<std::optional<double>, 3> getLinePositions() const;
@@ -76,6 +81,11 @@ private:
     double lineSpacing = 0.1;       //!< Initial line spacing.
     double centerX = 0;             //!< Initial centerX.
     bool elementsVisible = false;   //!< Initial visibility of the line.
+
+    int plotid = 0;                 //!< Initial value for the plot id (can be used to differentiate plot if they were stored in an array)
+
+signals:
+    void xLineSelected(std::string plotname, int plotid, std::optional<double> xLineValue);
 };
 
 #endif // QCUSTOMPLOTINTERVALWINDOW_H

@@ -967,7 +967,7 @@ void MainWindow::on_comboBox_amodeNumber_textActivated(const QString &arg1)
     for(std::size_t i = 0; i < amode_group.size(); ++i)
     {
         // create a string for the plot name
-        std::string str_num = "amode_plot" + std::to_string(amode_group.at(i).number);
+        std::string str_num = "amode_2dplot_" + std::to_string(amode_group.at(i).number);
 
         // create a new QCustomPlot object
         QCustomPlotIntervalWindow *current_plot = new QCustomPlotIntervalWindow(this);

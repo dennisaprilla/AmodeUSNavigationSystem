@@ -37,6 +37,11 @@ void QCustomPlotIntervalWindow::setInitialSpacing(double spacing)
     lineSpacing = spacing;
 }
 
+void QCustomPlotIntervalWindow::setPlotId(int id)
+{
+    plotid = id;
+}
+
 void QCustomPlotIntervalWindow::setInitialLines(std::array<std::optional<double>, 3> window)
 {
     // check if the window does not have any value, in that case give a warning and do nothing
@@ -90,6 +95,11 @@ void QCustomPlotIntervalWindow::onMousePress(QMouseEvent *event)
         updateLabels();
     }
     replot();
+
+    // send a signal that a xLine value is selected
+    std::optional<double> tmp = getLinePositions()[1];
+    emit xLineSelected(this->objectName().toStdString(), plotid, getLinePositions()[1]);
+    qDebug() << "QCustomPlotIntervalWindow::onMousePress() emitted a signal xLineSelected with empty line value";
 }
 
 void QCustomPlotIntervalWindow::updateLines(double centerX)
@@ -157,7 +167,7 @@ std::array<std::optional<double>, 3> QCustomPlotIntervalWindow::getLinePositions
     std::array<std::optional<double>, 3> positions = {std::nullopt, std::nullopt, std::nullopt};
 
     if (!elementsVisible) {
-        qDebug() << "Warning: Lines are not visible. Returning current stored positions.";
+        qDebug() << "QCustomPlotIntervalWindow::getLinePositions() Warning: Lines are not visible. Returning current stored positions.";
     }
 
     // if the user didn't set (click) the window, means that centerX is 0.0, just return the std::nullopt
