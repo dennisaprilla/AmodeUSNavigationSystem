@@ -87,6 +87,9 @@ MainWindow::MainWindow(QWidget *parent)
         ui->comboBox_camera->addItem(QString::fromStdString(str));
     }
 
+    // Connect the button's clicked signal to the slot that opens the second window
+    connect(ui->pushButton_recordWindow, &QPushButton::clicked, this, &MainWindow::openMeasurementWindow);
+
 }
 
 MainWindow::~MainWindow()
@@ -996,23 +999,25 @@ void MainWindow::on_comboBox_amodeNumber_textActivated(const QString &arg1)
         // store the plot to our vector, collection of plots
         amodePlots.push_back(current_plot);
 
-        // this part is just for visualization organization, i want the organization is a bit more automatic
-        // so that i could generate 00,01,10,11 according how many amode i want to plot
-        short bit1 = (i >> 1) & 1;
-        short bit2 = i & 1;
-        if (amode_group.size()==1)
-        {
-            ui->gridLayout_amodeSignals->addWidget(current_plot, 0,0, 2,2);
-        }
-        if (amode_group.size()==2)
-        {
-            // ui->gridLayout_amodeSignals->addWidget(current_plot, bit1, bit2, 2,1);
-            ui->gridLayout_amodeSignals->addWidget(current_plot, bit2, bit1, 1,2);
-        }
-        if (amode_group.size()==3 || amode_group.size()==4)
-        {
-            ui->gridLayout_amodeSignals->addWidget(current_plot, bit1, bit2, 1,1);
-        }
+        // // this part is just for visualization organization, i want the organization is a bit more automatic
+        // // so that i could generate 00,01,10,11 according how many amode i want to plot
+        // short bit1 = (i >> 1) & 1;
+        // short bit2 = i & 1;
+        // if (amode_group.size()==1)
+        // {
+        //     ui->gridLayout_amodeSignals->addWidget(current_plot, 0,0, 2,2);
+        // }
+        // if (amode_group.size()==2)
+        // {
+        //     // ui->gridLayout_amodeSignals->addWidget(current_plot, bit1, bit2, 2,1);
+        //     ui->gridLayout_amodeSignals->addWidget(current_plot, bit2, bit1, 1,2);
+        // }
+        // if (amode_group.size()==3 || amode_group.size()==4)
+        // {
+        //     ui->gridLayout_amodeSignals->addWidget(current_plot, bit1, bit2, 1,1);
+        // }
+
+        ui->gridLayout_amodeSignals->addWidget(current_plot, i, 0);
     }
 
     // I want to make this pushbutton, when changed, also change the 3d amode visualization
@@ -1158,5 +1163,21 @@ void MainWindow::on_checkBox_volumeShow3DSignal_clicked(bool checked)
 }
 
 
+/* *****************************************************************************************
+ * *****************************************************************************************
+ *
+ * Everything that is related to Measurement Window
+ *
+ * *****************************************************************************************
+ * ***************************************************************************************** */
+
+void MainWindow::openMeasurementWindow()
+{
+    // Create the second window if it does not already exist
+    if (!measurementwindow) {
+        measurementwindow = new MeasurementWindow(myAmodeConnection, myMocapConnection);  // Make this the parent
+    }
+    measurementwindow->show();  // Show the second window
+}
 
 
