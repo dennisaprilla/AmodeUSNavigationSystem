@@ -114,7 +114,7 @@ void MeasurementWindow::on_pushButton_recordButton_clicked()
         connect(myMocapConnection, &MocapConnection::dataReceived, myAmodeMocapRecorder, &AmodeMocapRecorder::onRigidBodyReceived);
 
         // start recording
-        // myAmodeMocapRecorder->startRecording();
+        myAmodeMocapRecorder->startRecording();
 
         // change the button text
         ui->pushButton_recordButton->setText("Stop");

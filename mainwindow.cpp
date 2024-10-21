@@ -992,6 +992,9 @@ void MainWindow::on_comboBox_amodeNumber_textActivated(const QString &arg1)
         current_plot->yAxis->setRange(-500, 7500);
         current_plot->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
+        // setPlotId is important for feature where user can click amode2dsignal and the point will be represented in volume3d
+        current_plot->setPlotId(i);
+
         // get the current window data from the current amode, if the window is already set for this
         // current amode, let's draw the inital lines.
         AmodeConfig::Window currentwindow = myAmodeConfig->getWindowByNumber(amode_group.at(i).number);
@@ -1145,9 +1148,16 @@ void MainWindow::on_checkBox_volumeShow3DSignal_clicked(bool checked)
         myVolumeAmodeController->setSignalDisplayMode(ui->comboBox_volume3DSignalMode->currentIndex());
         myVolumeAmodeController->setActiveHolder(ui->comboBox_amodeNumber->currentText().toStdString());
 
-        // connect necessary slots
+        // connect necessary signal (data received from mocap connection and amode connection) to VolumeAmodeController slots
         connect(myMocapConnection, &MocapConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onRigidBodyReceived);
         connect(myAmodeConnection, &AmodeConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onAmodeSignalReceived);
+
+        // i also need to connect signal from each individual amode 2d plots (that is emitted when the user click the plot) to VolumeAmodeController slots
+        for(std::size_t i = 0; i < amodePlots.size(); ++i)
+        {
+            connect(amodePlots.at(i), &QCustomPlotIntervalWindow::xLineSelected, myVolumeAmodeController, &VolumeAmodeController::onExpectedPeakSelected);
+        }
+
     }
 
     // if the checkbox is now false, let's disconnect the signal to the class and delete the class
@@ -1195,5 +1205,4 @@ void MainWindow::openMeasurementWindow()
     }
     measurementwindow->show();  // Show the second window
 }
-
 
