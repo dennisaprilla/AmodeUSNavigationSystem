@@ -253,7 +253,7 @@ void VolumeAmodeVisualizer::visualize3DSignal()
     // >> because this class is meant to be run in another thread. This is the way to access it
     QMetaObject::invokeMethod(scatter_, [this]() {
         for (QScatter3DSeries *series : scatter_->seriesList()) {
-            if (series->name() == "amode3dsignal" || series->name() == "amode3dorigin") {
+            if (series->name() == "amode3dsignal" || series->name() == "amode3dorigin" || series->name() == "amode3dexpectedpeak") {
                 scatter_->removeSeries(series);
             }
         }
@@ -299,8 +299,8 @@ void VolumeAmodeVisualizer::visualize3DSignal()
             amodesignal_rowsel_eigenVector.head(idx).setZero();
         }
 
-        // store it to our amode3dsignal_
-        amode3dsignal_.row(0) = amodesignal_rowsel_eigenVector * 0.001; // x-coordinate
+        // store it to our amode3dsignal_ while multiplied by a scale (the height of the amplitude in 3d visualization)
+        amode3dsignal_.row(0) = amodesignal_rowsel_eigenVector * 0.0015; // x-coordinate
 
         // // convert the points to accomodate RHR to LHR transformation
         // Eigen::Matrix<double, 4, Eigen::Dynamic> amode3dsignal_LH;
@@ -358,6 +358,7 @@ void VolumeAmodeVisualizer::visualize3DSignal()
 
         // if the user selected the expected peaks in the 2d plot visualization,
         // it means that we need to visualize the expected peak in our 3d signal visualization.
+        qDebug() << "VolumeAmodeVisualizer::visualize3DSignal() expectedpeaks_ at " << i << " has value? " << expectedpeaks_.at(i).has_value();
         if(expectedpeaks_.at(i).has_value())
         {
             // initialize the 3d point
@@ -399,6 +400,10 @@ void VolumeAmodeVisualizer::visualize3DSignal()
         originSeries->setMesh(QAbstract3DSeries::MeshPoint);
         originSeries->setBaseColor(Qt::red);
         originSeries->dataProxy()->resetArray(originArray);
+        scatter_->addSeries(originSeries);
+
+        if (expectedPeakArray->isEmpty())
+            return;
 
         QScatter3DSeries *expectedPeakSeries = new QScatter3DSeries();
         expectedPeakSeries->setName("amode3dexpectedpeak");
@@ -408,7 +413,6 @@ void VolumeAmodeVisualizer::visualize3DSignal()
         expectedPeakSeries->dataProxy()->resetArray(expectedPeakArray);
 
         // add the current origin point data (series) to our scatter object
-        scatter_->addSeries(originSeries);
         scatter_->addSeries(expectedPeakSeries);
     });
 

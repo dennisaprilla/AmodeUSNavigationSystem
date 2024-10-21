@@ -371,7 +371,7 @@ void Volume3DController::updateVolume(int value)
     // Create a new scatter series
     QScatter3DSeries *series = new QScatter3DSeries();
     series->setName("tissue_layers");
-    series->setItemSize(0.05f);
+    series->setItemSize(0.03f);
     series->setMesh(QAbstract3DSeries::MeshPoint);
     series->setBaseGradient(gradient);
     series->setColorStyle(Q3DTheme::ColorStyleRangeGradient);

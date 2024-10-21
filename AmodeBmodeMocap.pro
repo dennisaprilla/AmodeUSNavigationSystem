@@ -14,10 +14,14 @@ SOURCES += \
     amodeconfig.cpp \
     amodeconnection.cpp \
     amodedatamanipulator.cpp \
+    amodemocaprecorder.cpp \
     bmode3dvisualizer.cpp \
     bmodeconnection.cpp \
+    datawriter.cpp \
+    imagewriter.cpp \
     main.cpp \
     mainwindow.cpp \
+    measurementwindow.cpp \
     mhareader.cpp \
     mhawriter.cpp \
     qcustomplotintervalwindow.cpp \
@@ -32,9 +36,13 @@ HEADERS += \
     amodeconfig.h \
     amodeconnection.h \
     amodedatamanipulator.h \
+    amodemocaprecorder.h \
     bmode3dvisualizer.h \
     bmodeconnection.h \
+    datawriter.h \
+    imagewriter.h \
     mainwindow.h \
+    measurementwindow.h \
     mhareader.h \
     mhawriter.h \
     mocapconnection.h \
@@ -48,7 +56,8 @@ HEADERS += \
     volumeamodevisualizer.h
 
 FORMS += \
-    mainwindow.ui
+    mainwindow.ui \
+    measurementwindow.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

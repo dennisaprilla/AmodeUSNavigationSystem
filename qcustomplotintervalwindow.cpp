@@ -99,7 +99,7 @@ void QCustomPlotIntervalWindow::onMousePress(QMouseEvent *event)
     // send a signal that a xLine value is selected
     std::optional<double> tmp = getLinePositions()[1];
     emit xLineSelected(this->objectName().toStdString(), plotid, getLinePositions()[1]);
-    qDebug() << "QCustomPlotIntervalWindow::onMousePress() emitted a signal xLineSelected with empty line value";
+    qDebug() << "QCustomPlotIntervalWindow::onMousePress() emitted a signal xLineSelected with " << tmp << "line value";
 }
 
 void QCustomPlotIntervalWindow::updateLines(double centerX)

@@ -104,7 +104,7 @@ private:
     int pixelintensity_min_;                    //!< The minimum value of pixel intensity in the volume
 
     // volume
-    int extensionvolume_mm = 35;                //!< An dimension extension for volume viusalization
+    int extensionvolume_mm = 30;                //!< An dimension extension for volume viusalization
 
 signals:
 };

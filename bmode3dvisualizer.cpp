@@ -31,6 +31,7 @@
 
 // library below is for loading an XML using RapidXML
 #include <QFile>
+#include <QDir>
 #include <QTextStream>
 #include <iostream>
 #include "rapidxml.hpp"
@@ -39,7 +40,15 @@
 Bmode3DVisualizer::Bmode3DVisualizer(QWidget *parent, QString calibconfig_path)
     : QWidget(parent)
 {
+    // Initialize the scene
     initializeScene();
+
+    // if the path empty
+    if(calibconfig_path.isEmpty())
+    {
+        qDebug() << "Bmode3DVisualizer::Bmode3DVisualizer() the class is initialized without calibconfig_path";
+        return;
+    }
 
     // Initialize probe base-transform. The probe model has its own pivot and initial orientation.
     // It is not always necessarily align with the transformation that is provided by mocap capture
