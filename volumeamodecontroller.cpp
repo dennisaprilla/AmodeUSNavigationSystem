@@ -130,3 +130,8 @@ void VolumeAmodeController::onRigidBodyReceived(const QualisysTransformationMana
     }
 
 }
+
+void VolumeAmodeController::onExpectedPeakSelected(std::string plotname, int plotid, std::optional<double> xLineValue)
+{
+    m_visualizer->setExpectedPeak(plotid, xLineValue);
+}

@@ -51,6 +51,11 @@ public:
      */
     void test(const QVector<int16_t>& data_amode, const Eigen::Isometry3d& data_rigidbody);
 
+    /**
+     * @brief SET the expected peak that later will be
+     */
+    void setExpectedPeak(int plotid, std::optional<double> xLineValue);
+
 signals:
 
 public slots:
@@ -101,16 +106,18 @@ private:
     bool isDownsample       = true;                             //!< a flag to signify the class that we are doing downsampling.
 
     std::vector<AmodeConfig::Data> amodegroupdata_;             //!< Stores the configuration of a-mode group. We need the local transformations.
+    std::vector<std::optional<double>> expectedpeaks_;           //!< Stores the information about expectedPeaks that comes from the user when they click the 2d plot.
     QVector<int16_t> amodesignal_;
     Eigen::Matrix<double, 4, Eigen::Dynamic> amode3dsignal_;    //!< A-mode signal but in Eigen::Matrix. For transformation manupulation, easier with this class.
     std::vector<Eigen::Matrix<double, 4, Eigen::Dynamic>> all_amode3dsignal_;   //!< all amode3dsignal_ in a holder
 
     // all variables related to transformations
-    Eigen::Isometry3d currentT_holder_camera;                   //!< current transformation of holder in camera coordinate system
-    std::vector<Eigen::Isometry3d> currentT_ustip_camera;       //!< current transformation of ultrasound tip in camera coordinate system
-    std::vector<Eigen::Isometry3d> currentT_ustip_camera_Qt;    //!< similar to currentT_ustip_camera, but with Qt format, the T is transposed compared to common homogeneous T format
+    Eigen::Isometry3d currentT_holder_ref;                      //!< current transformation of holder in camera coordinate system
+    std::vector<Eigen::Isometry3d> currentT_ustip_ref;          //!< current transformation of ultrasound tip in camera coordinate system
+    std::vector<Eigen::Isometry3d> currentT_ustip_ref_Qt;       //!< similar to currentT_ustip_camera, but with Qt format, the T is transposed compared to common homogeneous T format
 
     // variable that handle the display of 3d signal
     int n_signaldisplay = 1;                                    //!< controls the visualization of the 3d signal. See setSignalDisplayMode() description for detail.
     std::vector<Eigen::Matrix4d> rotation_signaldisplay;        //!< controls the visualization of the 3d signal.
+
 };

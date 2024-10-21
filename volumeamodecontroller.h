@@ -74,9 +74,14 @@ public slots:
     void onAmodeSignalReceived(const std::vector<uint16_t> &usdata_uint16_);
 
     /**
-     * @brief slot function, will be called when transformations in a timestamp are received, needs to be connected to signal from QualisysConnection::dataReceived class
+     * @brief slot function, will be called when transformations in a timestamp are received, needs to be connected to signal from QualisysConnection::dataReceived
      */
     void onRigidBodyReceived(const QualisysTransformationManager &tmanager);
+
+    /**
+     * @brief slot function, will be called when the user clicked the 2d amode signal to select the peak, needs to be connected to signal from QCustomPlotIntervalWindow::xLineSelected
+     */
+    void onExpectedPeakSelected(std::string plotname, int plotid, std::optional<double> xLineValue);
 
 
 private:

@@ -87,6 +87,9 @@ MainWindow::MainWindow(QWidget *parent)
         ui->comboBox_camera->addItem(QString::fromStdString(str));
     }
 
+    // Connect the button's clicked signal to the slot that opens the second window
+    connect(ui->pushButton_recordWindow, &QPushButton::clicked, this, &MainWindow::openMeasurementWindow);
+
 }
 
 MainWindow::~MainWindow()
@@ -343,6 +346,9 @@ void MainWindow::on_pushButton_bmode2d3d_clicked()
                 // connect(myMocapConnection, &QualisysConnection::dataReceived, this, &MainWindow::updateQualisysText);
             }
 
+            // emit a signal, telling mocap is connected
+            emit mocapConnected(myMocapConnection);
+
             // Only intantiate Bmode3DVisualizer after myMocapConnection is instantiated (and connected)
             // <!> I was thinking that probably i don't need to pass the myBmodeConnection and myMocapConnection to the constructor
             // <!> Better to just connect the signal and the slot outside the constructor
@@ -366,8 +372,9 @@ void MainWindow::on_pushButton_bmode2d3d_clicked()
             frameLayout->addWidget(myBmode3Dvisualizer);
 
             // adjust the layout
-            ui->textEdit_qualisysLog->hide();
-            ui->layout_Bmode2D3D_content->addWidget(borderFrame, 1, 1);
+            // ui->textEdit_qualisysLog->hide();
+            ui->layout_Bmode2D3D_content->addWidget(borderFrame, 1, 1, 2, 1);
+            ui->widget_Bmode3dVisPlaceholder->deleteLater();
 
             // Change the flag
             isBmode2d3dFirstStream = false;
@@ -774,6 +781,9 @@ void MainWindow::on_pushButton_amodeConnect_clicked()
         connect(myAmodeConnection, &AmodeConnection::dataReceived, this, &MainWindow::displayUSsignal);
         connect(myAmodeConnection, &AmodeConnection::errorOccured, this, &MainWindow::disconnectUSsignal);
 
+        // emit a signal, telling amode machine is connected
+        emit amodeConnected(myAmodeConnection);
+
         // Check if amode config already loaded. When myAmodeConfig is nullptr it means the config is not yet loaded.
         if (myAmodeConfig == nullptr)
         {
@@ -822,6 +832,9 @@ void MainWindow::on_pushButton_amodeConnect_clicked()
         ui->pushButton_amodeConfig->setEnabled(true);
 
         // disconnectUSsignal();
+
+        // emit a signal, telling amode machine is disconnected
+        emit amodeDisconnected();
     }
 }
 
@@ -967,7 +980,7 @@ void MainWindow::on_comboBox_amodeNumber_textActivated(const QString &arg1)
     for(std::size_t i = 0; i < amode_group.size(); ++i)
     {
         // create a string for the plot name
-        std::string str_num = "amode_plot" + std::to_string(amode_group.at(i).number);
+        std::string str_num = "amode_2dplot_" + std::to_string(amode_group.at(i).number);
 
         // create a new QCustomPlot object
         QCustomPlotIntervalWindow *current_plot = new QCustomPlotIntervalWindow(this);
@@ -978,6 +991,9 @@ void MainWindow::on_comboBox_amodeNumber_textActivated(const QString &arg1)
         current_plot->xAxis->setRange(0, us_dvector_downsampled_.coeff(us_dvector_downsampled_.size() - 1));
         current_plot->yAxis->setRange(-500, 7500);
         current_plot->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+        // setPlotId is important for feature where user can click amode2dsignal and the point will be represented in volume3d
+        current_plot->setPlotId(i);
 
         // get the current window data from the current amode, if the window is already set for this
         // current amode, let's draw the inital lines.
@@ -996,23 +1012,25 @@ void MainWindow::on_comboBox_amodeNumber_textActivated(const QString &arg1)
         // store the plot to our vector, collection of plots
         amodePlots.push_back(current_plot);
 
-        // this part is just for visualization organization, i want the organization is a bit more automatic
-        // so that i could generate 00,01,10,11 according how many amode i want to plot
-        short bit1 = (i >> 1) & 1;
-        short bit2 = i & 1;
-        if (amode_group.size()==1)
-        {
-            ui->gridLayout_amodeSignals->addWidget(current_plot, 0,0, 2,2);
-        }
-        if (amode_group.size()==2)
-        {
-            // ui->gridLayout_amodeSignals->addWidget(current_plot, bit1, bit2, 2,1);
-            ui->gridLayout_amodeSignals->addWidget(current_plot, bit2, bit1, 1,2);
-        }
-        if (amode_group.size()==3 || amode_group.size()==4)
-        {
-            ui->gridLayout_amodeSignals->addWidget(current_plot, bit1, bit2, 1,1);
-        }
+        // // this part is just for visualization organization, i want the organization is a bit more automatic
+        // // so that i could generate 00,01,10,11 according how many amode i want to plot
+        // short bit1 = (i >> 1) & 1;
+        // short bit2 = i & 1;
+        // if (amode_group.size()==1)
+        // {
+        //     ui->gridLayout_amodeSignals->addWidget(current_plot, 0,0, 2,2);
+        // }
+        // if (amode_group.size()==2)
+        // {
+        //     // ui->gridLayout_amodeSignals->addWidget(current_plot, bit1, bit2, 2,1);
+        //     ui->gridLayout_amodeSignals->addWidget(current_plot, bit2, bit1, 1,2);
+        // }
+        // if (amode_group.size()==3 || amode_group.size()==4)
+        // {
+        //     ui->gridLayout_amodeSignals->addWidget(current_plot, bit1, bit2, 1,1);
+        // }
+
+        ui->gridLayout_amodeSignals->addWidget(current_plot, i, 0);
     }
 
     // I want to make this pushbutton, when changed, also change the 3d amode visualization
@@ -1130,9 +1148,16 @@ void MainWindow::on_checkBox_volumeShow3DSignal_clicked(bool checked)
         myVolumeAmodeController->setSignalDisplayMode(ui->comboBox_volume3DSignalMode->currentIndex());
         myVolumeAmodeController->setActiveHolder(ui->comboBox_amodeNumber->currentText().toStdString());
 
-        // connect necessary slots
+        // connect necessary signal (data received from mocap connection and amode connection) to VolumeAmodeController slots
         connect(myMocapConnection, &MocapConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onRigidBodyReceived);
         connect(myAmodeConnection, &AmodeConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onAmodeSignalReceived);
+
+        // i also need to connect signal from each individual amode 2d plots (that is emitted when the user click the plot) to VolumeAmodeController slots
+        for(std::size_t i = 0; i < amodePlots.size(); ++i)
+        {
+            connect(amodePlots.at(i), &QCustomPlotIntervalWindow::xLineSelected, myVolumeAmodeController, &VolumeAmodeController::onExpectedPeakSelected);
+        }
+
     }
 
     // if the checkbox is now false, let's disconnect the signal to the class and delete the class
@@ -1158,5 +1183,26 @@ void MainWindow::on_checkBox_volumeShow3DSignal_clicked(bool checked)
 }
 
 
+/* *****************************************************************************************
+ * *****************************************************************************************
+ *
+ * Everything that is related to Measurement Window
+ *
+ * *****************************************************************************************
+ * ***************************************************************************************** */
 
+void MainWindow::openMeasurementWindow()
+{
+    // Create the second window if it does not already exist
+    if (!measurementwindow) {
+        // Create an instance of the recording window
+        measurementwindow = new MeasurementWindow(myAmodeConnection, myMocapConnection);
+        // Connect the necessary signal to slots
+        connect(this, &MainWindow::amodeConnected, measurementwindow, &MeasurementWindow::on_amodeConnected);
+        connect(this, &MainWindow::amodeDisconnected, measurementwindow, &MeasurementWindow::on_amodeDisconnected);
+        connect(this, &MainWindow::mocapConnected, measurementwindow, &MeasurementWindow::on_mocapConnected);
+        // connect(this, &MainWindow::mocapDisconnected, measurementwindow, &MeasurementWindow::on_mocapDisconnected);
+    }
+    measurementwindow->show();  // Show the second window
+}
 

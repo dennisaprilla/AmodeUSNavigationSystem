@@ -19,6 +19,8 @@
 #include "volume3dcontroller.h"
 #include "volumeamodecontroller.h"
 
+#include "measurementwindow.h"
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
@@ -66,6 +68,8 @@ private slots:
     void on_checkBox_autoReconstruct_stateChanged(int arg1);
     void on_comboBox_volume3DSignalMode_currentIndexChanged(int index);
 
+    void openMeasurementWindow();
+
 private:
     void slotConnect_Bmode2d3d();
     void slotDisconnect_Bmode2d3d();
@@ -83,6 +87,7 @@ private:
     MHAReader *myMHAReader                          = nullptr;
     Volume3DController *myVolume3DController        = nullptr;
     VolumeAmodeController *myVolumeAmodeController  = nullptr;
+    MeasurementWindow *measurementwindow            = nullptr;
 
     // for
     Q3DScatter *scatter;                        //!< For handling amode 3d plots and 3d volume visualization
@@ -109,5 +114,11 @@ private:
 
     int bmode2dvisheight = 1;                   //!< Stores the height of the layout where we draw B-mode 2d image (there is a bug that the height keep increasing)
 
+
+signals:
+    void amodeConnected(AmodeConnection *amodeConnection);
+    void amodeDisconnected();
+    void mocapConnected(MocapConnection *mocapConnection);
+    void mocapDisconnected();
 };
 #endif // MAINWINDOW_H
