@@ -15,12 +15,52 @@ MeasurementWindow::MeasurementWindow(AmodeConnection *amodeConnection, MocapConn
     // Set the window flags to ensure the second window stays on top
     setWindowFlags(windowFlags() | Qt::WindowStaysOnTopHint);
 
+    // Check if myAmodeConnection and myMocapConnection had been initialized
+    if (myAmodeConnection != nullptr)
+    {
+        ui->label_statusAmode->setText("Connected");
+        ui->label_statusAmode->setStyleSheet("QLabel { color: green; background-color: rgb(200, 255, 200); }");
+    }
+    if (myMocapConnection != nullptr)
+    {
+        ui->label_statusMocap->setText("Connected");
+        ui->label_statusMocap->setStyleSheet("QLabel { color : green; background-color: rgb(200, 255, 200); }");
+    }
 }
 
 MeasurementWindow::~MeasurementWindow()
 {
     delete ui;
 }
+
+void MeasurementWindow::on_amodeConnected(AmodeConnection *amodeConnection)
+{
+    myAmodeConnection = amodeConnection;
+    ui->label_statusAmode->setText("Connected");
+    ui->label_statusAmode->setStyleSheet("QLabel { color: green; background-color: rgb(200, 255, 200); }");
+}
+
+void MeasurementWindow::on_amodeDisconnected()
+{
+    myAmodeConnection = nullptr;
+    ui->label_statusAmode->setText("Not Connected");
+    ui->label_statusAmode->setStyleSheet("QLabel { color: green; background-color: rgb(255, 200, 200); }");
+}
+
+void MeasurementWindow::on_mocapConnected(MocapConnection *mocapConnection)
+{
+    myMocapConnection = mocapConnection;
+    ui->label_statusMocap->setText("Connected");
+    ui->label_statusMocap->setStyleSheet("QLabel { color : green; background-color: rgb(200, 255, 200); }");
+}
+
+/*
+void MeasurementWindow::on_mocapDisonnected()
+{
+    myMocapConnection = nullptr;
+}
+*/
+
 
 void MeasurementWindow::on_pushButton_recordPath_clicked()
 {
@@ -43,15 +83,22 @@ void MeasurementWindow::on_pushButton_recordButton_clicked()
         return;
     }
 
+
+    if (myAmodeConnection==nullptr && myMocapConnection == nullptr)
+    {
+        QMessageBox::warning(this, "No Connection", "Connect both Mocap System and A-mode Ultrasound machine first");
+        return;
+    }
+
     if (myAmodeConnection==nullptr)
     {
-        QMessageBox::warning(this, "No Connection", "Please connect to A-mode Ultrasound machine first");
+        QMessageBox::warning(this, "No Connection", "A-mode Ultrasound machine is still yet to be connected");
         return;
     }
 
     if (myMocapConnection==nullptr)
     {
-        QMessageBox::warning(this, "No Connection", "Please connect to the Motion Capture system first");
+        QMessageBox::warning(this, "No Connection", "Motion Capture system is still yet to be connected");
         return;
     }
 

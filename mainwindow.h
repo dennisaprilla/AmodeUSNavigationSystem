@@ -114,5 +114,11 @@ private:
 
     int bmode2dvisheight = 1;                   //!< Stores the height of the layout where we draw B-mode 2d image (there is a bug that the height keep increasing)
 
+
+signals:
+    void amodeConnected(AmodeConnection *amodeConnection);
+    void amodeDisconnected();
+    void mocapConnected(MocapConnection *mocapConnection);
+    void mocapDisconnected();
 };
 #endif // MAINWINDOW_H

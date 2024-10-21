@@ -21,10 +21,14 @@ public:
     explicit MeasurementWindow(AmodeConnection *amodeConnection, MocapConnection *mocapConnection, QWidget *parent = nullptr);
     ~MeasurementWindow();
 
+public slots:
+    void on_amodeConnected(AmodeConnection *amodeConnection);
+    void on_amodeDisconnected();
+    void on_mocapConnected(MocapConnection *mocapConnection);
+    // void on_mocapDisconnected();
+
 private slots:
-
     void on_pushButton_recordPath_clicked();
-
     void on_pushButton_recordButton_clicked();
 
 private:

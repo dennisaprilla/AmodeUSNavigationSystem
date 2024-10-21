@@ -346,6 +346,9 @@ void MainWindow::on_pushButton_bmode2d3d_clicked()
                 // connect(myMocapConnection, &QualisysConnection::dataReceived, this, &MainWindow::updateQualisysText);
             }
 
+            // emit a signal, telling mocap is connected
+            emit mocapConnected(myMocapConnection);
+
             // Only intantiate Bmode3DVisualizer after myMocapConnection is instantiated (and connected)
             // <!> I was thinking that probably i don't need to pass the myBmodeConnection and myMocapConnection to the constructor
             // <!> Better to just connect the signal and the slot outside the constructor
@@ -369,8 +372,9 @@ void MainWindow::on_pushButton_bmode2d3d_clicked()
             frameLayout->addWidget(myBmode3Dvisualizer);
 
             // adjust the layout
-            ui->textEdit_qualisysLog->hide();
-            ui->layout_Bmode2D3D_content->addWidget(borderFrame, 1, 1);
+            // ui->textEdit_qualisysLog->hide();
+            ui->layout_Bmode2D3D_content->addWidget(borderFrame, 1, 1, 2, 1);
+            ui->widget_Bmode3dVisPlaceholder->deleteLater();
 
             // Change the flag
             isBmode2d3dFirstStream = false;
@@ -777,6 +781,9 @@ void MainWindow::on_pushButton_amodeConnect_clicked()
         connect(myAmodeConnection, &AmodeConnection::dataReceived, this, &MainWindow::displayUSsignal);
         connect(myAmodeConnection, &AmodeConnection::errorOccured, this, &MainWindow::disconnectUSsignal);
 
+        // emit a signal, telling amode machine is connected
+        emit amodeConnected(myAmodeConnection);
+
         // Check if amode config already loaded. When myAmodeConfig is nullptr it means the config is not yet loaded.
         if (myAmodeConfig == nullptr)
         {
@@ -825,6 +832,9 @@ void MainWindow::on_pushButton_amodeConnect_clicked()
         ui->pushButton_amodeConfig->setEnabled(true);
 
         // disconnectUSsignal();
+
+        // emit a signal, telling amode machine is disconnected
+        emit amodeDisconnected();
     }
 }
 
@@ -1175,7 +1185,13 @@ void MainWindow::openMeasurementWindow()
 {
     // Create the second window if it does not already exist
     if (!measurementwindow) {
-        measurementwindow = new MeasurementWindow(myAmodeConnection, myMocapConnection);  // Make this the parent
+        // Create an instance of the recording window
+        measurementwindow = new MeasurementWindow(myAmodeConnection, myMocapConnection);
+        // Connect the necessary signal to slots
+        connect(this, &MainWindow::amodeConnected, measurementwindow, &MeasurementWindow::on_amodeConnected);
+        connect(this, &MainWindow::amodeDisconnected, measurementwindow, &MeasurementWindow::on_amodeDisconnected);
+        connect(this, &MainWindow::mocapConnected, measurementwindow, &MeasurementWindow::on_mocapConnected);
+        // connect(this, &MainWindow::mocapDisconnected, measurementwindow, &MeasurementWindow::on_mocapDisconnected);
     }
     measurementwindow->show();  // Show the second window
 }

@@ -34,7 +34,7 @@
       </widget>
      </item>
      <item row="0" column="0">
-      <widget class="QLabel" name="label">
+      <widget class="QLabel" name="label_1">
        <property name="text">
         <string>Mocap Status</string>
        </property>
@@ -51,11 +51,17 @@
       </widget>
      </item>
      <item row="0" column="1" colspan="2">
-      <widget class="QLabel" name="label_3">
+      <widget class="QLabel" name="label_statusMocap">
        <property name="font">
         <font>
          <bold>true</bold>
         </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QLabel { 
+color : red; 
+background-color : rgb(255, 200, 200);
+}</string>
        </property>
        <property name="text">
         <string>Not Connected</string>
@@ -66,11 +72,17 @@
       </widget>
      </item>
      <item row="1" column="1" colspan="2">
-      <widget class="QLabel" name="label_4">
+      <widget class="QLabel" name="label_statusAmode">
        <property name="font">
         <font>
          <bold>true</bold>
         </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QLabel { 
+color : red; 
+background-color : rgb(255, 200, 200);
+}</string>
        </property>
        <property name="text">
         <string>Not Connected</string>

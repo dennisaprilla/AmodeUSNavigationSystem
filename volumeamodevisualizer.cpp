@@ -299,8 +299,8 @@ void VolumeAmodeVisualizer::visualize3DSignal()
             amodesignal_rowsel_eigenVector.head(idx).setZero();
         }
 
-        // store it to our amode3dsignal_
-        amode3dsignal_.row(0) = amodesignal_rowsel_eigenVector * 0.001; // x-coordinate
+        // store it to our amode3dsignal_ while multiplied by a scale (the height of the amplitude in 3d visualization)
+        amode3dsignal_.row(0) = amodesignal_rowsel_eigenVector * 0.0015; // x-coordinate
 
         // // convert the points to accomodate RHR to LHR transformation
         // Eigen::Matrix<double, 4, Eigen::Dynamic> amode3dsignal_LH;
