@@ -5,6 +5,8 @@
 #include <sstream>
 #include <iostream>
 
+#include "ultrasoundconfig.h"
+
 AmodeConfig::AmodeConfig(const std::string& filepath) {
     // get the filename and the file dir
     std::filesystem::path path(filepath);
@@ -150,10 +152,32 @@ void AmodeConfig::setWindowByNumber(int number, std::array<std::optional<double>
     // Check if the key exists in the map
     if (dataWindow.find(number) != dataWindow.end())
     {
-        dataWindow[number].isset = 1;
-        dataWindow[number].lowerbound = window[0].has_value() ? window[0].value() : 0.0;
-        dataWindow[number].middle     = window[1].has_value() ? window[1].value() : 0.0;
-        dataWindow[number].upperbound = window[2].has_value() ? window[2].value() : 0.0;
+        // If the middle of the window does not have any value, it means the user never
+        // click (set the window) for that particular plot. Well, it should be like that,
+        // but apparently, you still can click outside the axis but still in the plot.
+        // However, that just does not make sense. Okay, if this is true, set everything to 0
+        if (!window[1].has_value())
+        {
+            dataWindow[number].isset      = 0;
+            dataWindow[number].middle     = 0.0;
+            dataWindow[number].lowerbound = 0.0;
+            dataWindow[number].upperbound = 0.0;
+        }
+
+        // Lowerbound and upperbound, on the other hand, can has no value even though middle
+        // does not have any value, it is when the window is outside the plot.
+        // If lowerbound has no value, let's set the minimum x value of the plot, 0.0
+        // If upperbound has no value, let's put the maximum x value of the plot, n_sample * d_s
+        else
+        {
+            dataWindow[number].isset      = 1;
+            dataWindow[number].middle     = window[1].value();
+            dataWindow[number].lowerbound = window[0].has_value() ? window[0].value() : 0.0;
+            dataWindow[number].upperbound = window[2].has_value() ? window[2].value() : UltrasoundConfig::N_SAMPLE*UltrasoundConfig::DS;
+        }
+
+
+
     }
     else
     {

@@ -992,6 +992,15 @@ void MainWindow::on_comboBox_amodeNumber_textActivated(const QString &arg1)
         current_plot->yAxis->setRange(-500, 7500);
         current_plot->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
+        // add title
+        current_plot->plotLayout()->insertRow(0);
+        QString tmp_str = "Transducer #" + QString::number(amode_group.at(i).number);
+        QCPTextElement *title = new QCPTextElement(current_plot, tmp_str, QFont("sans", 8));
+        title->setLayer("overlay");  // Make sure it's drawn on top of the plot
+        title->setTextFlags(Qt::AlignLeft);  // Align the text to the left
+        title->setMargins(QMargins(5, 0, 0, 0));
+        current_plot->plotLayout()->addElement(0, 0, title);
+
         // setPlotId is important for feature where user can click amode2dsignal and the point will be represented in volume3d
         current_plot->setPlotId(i);
 
@@ -1067,6 +1076,37 @@ void MainWindow::on_pushButton_amodeWindow_clicked()
     // get the a-mode groups
     std::vector<AmodeConfig::Data> amode_group = myAmodeConfig->getDataByGroupName(ui->comboBox_amodeNumber->currentText().toStdString());
 
+    // check if the user skip one plot with no window set
+    bool isSkipped = false;
+    for(std::size_t i = 0; i < amode_group.size(); ++i)
+    {
+        // get the current amodePlots object and get the positions of the line
+        QCustomPlotIntervalWindow *current_plot = amodePlots.at(i);
+        auto positions = current_plot->getLinePositions();
+
+        if(!positions[1].has_value())
+        {
+            isSkipped = true;
+            break;
+        }
+    }
+
+    // if the user is indeed skipping one plot with no window set, ask for confirmation
+    if (isSkipped)
+    {
+        QMessageBox::StandardButton reply;
+        reply = QMessageBox::question( this, "Confirmation",
+                                      "There is one or more window that is yet to be set. Are you sure you want to proceed?",
+                                      QMessageBox::Ok | QMessageBox::Cancel);
+
+        if (reply == QMessageBox::Ok) {
+            qDebug() << "MainWindow::on_pushButton_amodeWindow_clicked() continue saving window even though there is exists plot without window set";
+        } else {
+            qDebug() << "MainWindow::on_pushButton_amodeWindow_clicked() cancelling saving window";
+            return;
+        }
+    }
+
     // loop for all member of groups
     for(std::size_t i = 0; i < amode_group.size(); ++i)
     {
@@ -1076,12 +1116,6 @@ void MainWindow::on_pushButton_amodeWindow_clicked()
         // get the current amodePlots object and get the positions of the line
         QCustomPlotIntervalWindow *current_plot = amodePlots.at(i);
         auto positions = current_plot->getLinePositions();
-
-        if(!positions[1].has_value())
-        {
-            QMessageBox::warning(this, "Saving cancelled", "There is one or more window that is yet to be set. Cancelling the saving.");
-            return;
-        }
 
         // set the window
         myAmodeConfig->setWindowByNumber(current_data.number, positions);
