@@ -50,6 +50,7 @@ void AmodeTimedRecorder::stopRecording()
         isRecording = false;
         timer->stop();
     }
+    emit amodeTimedRecordingStopped();
 }
 
 void AmodeTimedRecorder::onAmodeSignalReceived(const std::vector<uint16_t> &data)

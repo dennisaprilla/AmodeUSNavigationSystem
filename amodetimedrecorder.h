@@ -20,9 +20,6 @@ public:
     void startRecording();
     void stopRecording();
 
-signals:
-         // (Optional) Signals for status updates
-
 public slots:
     void onAmodeSignalReceived(const std::vector<uint16_t> &data);
 
@@ -37,6 +34,9 @@ private:
     QTimer *timer;
     std::vector<uint16_t> currentData;
     bool isRecording;
+
+signals:
+    void amodeTimedRecordingStopped();
 };
 
 #endif // AMODETIMEDRECORDER_H

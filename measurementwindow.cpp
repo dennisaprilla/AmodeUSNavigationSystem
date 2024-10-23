@@ -4,11 +4,12 @@
 #include <QFileDialog>
 #include <QMessageBox>
 
-MeasurementWindow::MeasurementWindow(AmodeConnection *amodeConnection, MocapConnection *mocapConnection, QWidget *parent)
+MeasurementWindow::MeasurementWindow(AmodeConnection *amodeConnection, MocapConnection *mocapConnection, AmodeTimedRecorder *amodeTimedRecorder, QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::MeasurementWindow)
     , myAmodeConnection(amodeConnection)
     , myMocapConnection(mocapConnection)
+    , myAmodeTimedRecorder(amodeTimedRecorder)
 {
     ui->setupUi(this);
 
@@ -26,11 +27,21 @@ MeasurementWindow::MeasurementWindow(AmodeConnection *amodeConnection, MocapConn
         ui->label_statusMocap->setText("Connected");
         ui->label_statusMocap->setStyleSheet("QLabel { color : green; background-color: rgb(200, 255, 200); }");
     }
+    if (myAmodeTimedRecorder != nullptr)
+    {
+        ui->label_statusIntermRec->setText("Active");
+        ui->label_statusIntermRec->setStyleSheet("QLabel { color : green; background-color: rgb(200, 255, 200); }");
+    }
 }
 
 MeasurementWindow::~MeasurementWindow()
 {
     delete ui;
+}
+
+void MeasurementWindow::setRecordPath(const QString &path)
+{
+    ui->lineEdit_recordPath->setText(path+"/");
 }
 
 void MeasurementWindow::on_amodeConnected(AmodeConnection *amodeConnection)
@@ -44,7 +55,7 @@ void MeasurementWindow::on_amodeDisconnected()
 {
     myAmodeConnection = nullptr;
     ui->label_statusAmode->setText("Not Connected");
-    ui->label_statusAmode->setStyleSheet("QLabel { color: green; background-color: rgb(255, 200, 200); }");
+    ui->label_statusAmode->setStyleSheet("QLabel { color: red; background-color: rgb(255, 200, 200); }");
 }
 
 void MeasurementWindow::on_mocapConnected(MocapConnection *mocapConnection)
@@ -60,6 +71,20 @@ void MeasurementWindow::on_mocapDisonnected()
     myMocapConnection = nullptr;
 }
 */
+
+void MeasurementWindow::on_amodeTimedRecordingStarted(AmodeTimedRecorder *amodeTimedRecorder)
+{
+    myAmodeTimedRecorder = amodeTimedRecorder;
+    ui->label_statusIntermRec->setText("Active");
+    ui->label_statusIntermRec->setStyleSheet("QLabel { color : green; background-color: rgb(200, 255, 200); }");
+}
+
+void MeasurementWindow::on_amodeTimedRecordingStopped()
+{
+    myAmodeTimedRecorder = nullptr;
+    ui->label_statusIntermRec->setText("Idle");
+    ui->label_statusIntermRec->setStyleSheet("QLabel { color : rgb(255, 85, 0); background-color : rgb(255, 255, 127); }");
+}
 
 
 void MeasurementWindow::on_pushButton_recordPath_clicked()
@@ -115,6 +140,15 @@ void MeasurementWindow::on_pushButton_recordButton_clicked()
 
         // start recording
         myAmodeMocapRecorder->startRecording();
+
+        // if the myAmodeTimedRecorder still recording, stop it
+        if(myAmodeTimedRecorder!=nullptr)
+        {
+            myAmodeTimedRecorder->stopRecording();
+            ui->label_statusMocap->setText("Idle");
+            ui->label_statusMocap->setStyleSheet("QLabel { color : rgb(255, 85, 0); background-color : rgb(255, 255, 127); }");
+        }
+
 
         // change the button text
         ui->pushButton_recordButton->setText("Stop");

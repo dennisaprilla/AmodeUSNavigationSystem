@@ -5,6 +5,8 @@
 #include <sstream>
 #include <iostream>
 
+#include "qdebug.h"
+#include "qlogging.h"
 #include "ultrasoundconfig.h"
 
 AmodeConfig::AmodeConfig(const std::string& filepath, const std::string& filedir_window) {
@@ -75,7 +77,7 @@ bool AmodeConfig::exportWindow()
     std::ofstream file(filepath_window_, std::ios::out);
 
     if (!file.is_open()) {
-        std::cerr << "Error: Unable to open file " << filepath_window_ << std::endl;
+        qDebug() << "AmodeConfig::exportWindow() Error: Unable to open file " << filepath_window_;
         return false;
     }
 
@@ -94,7 +96,7 @@ bool AmodeConfig::exportWindow()
              << window.upperbound << "\n";
 
         if (file.fail()) {
-            std::cerr << "Error: Failed to write data to file" << std::endl;
+            qDebug() << "AmodeConfig::exportWindow() Error: Failed to write data to file";
             file.close();
             return false;
         }
@@ -103,11 +105,11 @@ bool AmodeConfig::exportWindow()
     file.close();
 
     if (file.fail()) {
-        std::cerr << "Error: Failed to close file properly" << std::endl;
+        qDebug() << "AmodeConfig::exportWindow() Error: Failed to close file properly";
         return false;
     }
 
-    std::cout << "Data exported successfully to " << filepath_window_ << std::endl;
+    qDebug() << "AmodeConfig::exportWindow() Data exported successfully to " << filepath_window_;
     return true;
 }
 

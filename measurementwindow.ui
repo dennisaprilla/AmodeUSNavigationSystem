@@ -7,20 +7,8 @@
     <x>0</x>
     <y>0</y>
     <width>302</width>
-    <height>105</height>
+    <height>131</height>
    </rect>
-  </property>
-  <property name="minimumSize">
-   <size>
-    <width>302</width>
-    <height>105</height>
-   </size>
-  </property>
-  <property name="maximumSize">
-   <size>
-    <width>302</width>
-    <height>105</height>
-   </size>
   </property>
   <property name="windowTitle">
    <string>Record Measurement</string>
@@ -28,37 +16,23 @@
   <layout class="QGridLayout" name="gridLayout_2">
    <item row="0" column="0">
     <layout class="QGridLayout" name="gridLayout">
-     <item row="2" column="0">
-      <widget class="QLineEdit" name="lineEdit_recordPath">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="text">
-        <string>D:/</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_2">
-       <property name="text">
-        <string>A-mode Status</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label_1">
-       <property name="text">
-        <string>Mocap Status</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="2">
+     <item row="3" column="2">
       <widget class="QPushButton" name="pushButton_recordButton">
        <property name="text">
         <string>Record</string>
        </property>
        <property name="icon">
         <iconset theme="media-record"/>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLineEdit" name="lineEdit_recordPath">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>D:/</string>
        </property>
       </widget>
      </item>
@@ -83,6 +57,30 @@ background-color : rgb(255, 200, 200);
        </property>
       </widget>
      </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_1">
+       <property name="text">
+        <string>Mocap Status</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>A-mode Status</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QPushButton" name="pushButton_recordPath">
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset theme="folder-open"/>
+       </property>
+      </widget>
+     </item>
      <item row="1" column="1" colspan="2">
       <widget class="QLabel" name="label_statusAmode">
        <property name="font">
@@ -104,13 +102,28 @@ background-color : rgb(255, 200, 200);
        </property>
       </widget>
      </item>
-     <item row="2" column="1">
-      <widget class="QPushButton" name="pushButton_recordPath">
+     <item row="2" column="0">
+      <widget class="QLabel" name="label">
        <property name="text">
-        <string/>
+        <string>Intermediate Record Status</string>
        </property>
-       <property name="icon">
-        <iconset theme="folder-open"/>
+      </widget>
+     </item>
+     <item row="2" column="1" colspan="2">
+      <widget class="QLabel" name="label_statusIntermRec">
+       <property name="font">
+        <font>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QLabel { color : rgb(255, 85, 0); background-color : rgb(255, 255, 127); }</string>
+       </property>
+       <property name="text">
+        <string>Idle</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
        </property>
       </widget>
      </item>

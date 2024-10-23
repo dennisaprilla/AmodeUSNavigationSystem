@@ -47,7 +47,7 @@ void QCustomPlotIntervalWindow::setInitialLines(std::array<std::optional<double>
     // check if the window does not have any value, in that case give a warning and do nothing
     if(!window[0].has_value() && !window[1].has_value() && !window[2].has_value())
     {
-        qDebug() << "Warning: Trying to visualize lines but no value found.";
+        qDebug() << "QCustomPlotIntervalWindow::setInitialLines() Warning: Trying to visualize lines but no value found.";
         return;
     }
 
@@ -183,7 +183,7 @@ std::array<std::optional<double>, 3> QCustomPlotIntervalWindow::getLinePositions
             positions[i] = rawPositions[i];
         } else {
             positions[i] = std::nullopt;
-            qDebug() << "Warning: Line" << i << "is outside the plot range.";
+            qDebug() << "QCustomPlotIntervalWindow::getLinePositions() Warning: Line" << i << "is outside the plot range.";
         }
     }
 

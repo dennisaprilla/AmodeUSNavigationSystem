@@ -46,6 +46,8 @@ public slots:
     void volumeReconstructorCmdStandardOutput();
     void volumeReconstructorCmdStandardError();
 
+    void on_amodeTimedRecordingStopped();
+
 private slots:
     // void on_pushButton_startCamera_clicked();
     // void on_pushButton_qualisysConnect_clicked();
@@ -136,5 +138,7 @@ signals:
     void amodeDisconnected();
     void mocapConnected(MocapConnection *mocapConnection);
     void mocapDisconnected();
+    void amodeTimedRecordingStarted(AmodeTimedRecorder *amodeTimedRecorder);
+    void amodeTimedRecordingStopped();
 };
 #endif // MAINWINDOW_H

@@ -217,7 +217,7 @@ QString MainWindow::createNewTrialFolder(const QString &directoryPath, const QSt
     // Define the directory
     QDir dir(directoryPath);
     if (!dir.exists()) {
-        qWarning() << "Directory does not exist:" << directoryPath;
+        qWarning() << "MainWindow::createNewTrialFolder() Directory does not exist:" << directoryPath;
         return "";
     }
 
@@ -245,11 +245,11 @@ QString MainWindow::createNewTrialFolder(const QString &directoryPath, const QSt
     // Create the new folder
     if (!dir.mkdir(newFolderName))
     {
-        qWarning() << "Failed to create folder:" << newFolderName;
+        qWarning() << "MainWindow::createNewTrialFolder() Failed to create folder:" << newFolderName;
         return "";
     }
 
-    qDebug() << "Successfully created folder:" << newFolderName;
+    qDebug() << "MainWindow::createNewTrialFolder() Successfully created folder:" << newFolderName;
 
     // Define the paths for the subfolders
     QString newFolderPath = dir.filePath(newFolderName);
@@ -1346,7 +1346,12 @@ void MainWindow::on_pushButton_amodeIntermediateRecord_clicked()
 
         // connect signal from AmodeConnection::dataReceived to slot function AmodeTimedRecorder::onAmodeSignalReceived and start record
         connect(myAmodeConnection, &AmodeConnection::dataReceived, myAmodeTimedRecorder, &AmodeTimedRecorder::onAmodeSignalReceived);
+        connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, this, &MainWindow::on_amodeTimedRecordingStopped);
+
+        // start recording, and emit signal to indicate that we are now performing intermediate recording
+        // this signal should be caught by MeasurementWindow
         myAmodeTimedRecorder->startRecording();
+        emit amodeTimedRecordingStarted(myAmodeTimedRecorder);
 
         // set the flag
         isAmodeIntermediateRecord = true;
@@ -1371,16 +1376,27 @@ void MainWindow::on_pushButton_amodeIntermediateRecord_clicked()
 
         // stopping the recording
         myAmodeTimedRecorder->stopRecording();
-        disconnect(myAmodeConnection, &AmodeConnection::dataReceived, myAmodeTimedRecorder, &AmodeTimedRecorder::onAmodeSignalReceived);
 
-        // delete the object??
-        delete myAmodeTimedRecorder;
-        myAmodeTimedRecorder = nullptr;
-
-        // reset the flag
-        isAmodeIntermediateRecord = false;
-        ui->pushButton_amodeIntermediateRecord->setIcon(QIcon::fromTheme("process-working"));
+        // cleaning up will be executed by MainWindow::on_amodeTimedRecordingStopped()
+        // and this function is invoked by the a signal that is emitted in AmodeTimedRecorder::stopRecording.
     }
+}
+
+
+void MainWindow::on_amodeTimedRecordingStopped()
+{
+    // disconnect any signal
+    disconnect(myAmodeConnection, &AmodeConnection::dataReceived, myAmodeTimedRecorder, &AmodeTimedRecorder::onAmodeSignalReceived);
+    disconnect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, this, &MainWindow::on_amodeTimedRecordingStopped);
+
+    // delete the object??
+    delete myAmodeTimedRecorder;
+    myAmodeTimedRecorder = nullptr;
+    emit amodeTimedRecordingStopped();
+
+    // reset the flag
+    isAmodeIntermediateRecord = false;
+    ui->pushButton_amodeIntermediateRecord->setIcon(QIcon::fromTheme("process-working"));
 }
 
 
@@ -1483,13 +1499,18 @@ void MainWindow::openMeasurementWindow()
 {
     // Create the second window if it does not already exist
     if (!measurementwindow) {
+
         // Create an instance of the recording window
-        measurementwindow = new MeasurementWindow(myAmodeConnection, myMocapConnection);
+        measurementwindow = new MeasurementWindow(myAmodeConnection, myMocapConnection, myAmodeTimedRecorder);
+        measurementwindow->setRecordPath(path_trial_+"/"+dir_measurement_);
+
         // Connect the necessary signal to slots
         connect(this, &MainWindow::amodeConnected, measurementwindow, &MeasurementWindow::on_amodeConnected);
         connect(this, &MainWindow::amodeDisconnected, measurementwindow, &MeasurementWindow::on_amodeDisconnected);
         connect(this, &MainWindow::mocapConnected, measurementwindow, &MeasurementWindow::on_mocapConnected);
         // connect(this, &MainWindow::mocapDisconnected, measurementwindow, &MeasurementWindow::on_mocapDisconnected);
+        connect(this, &MainWindow::amodeTimedRecordingStarted, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStarted);
+        connect(this, &MainWindow::amodeTimedRecordingStopped, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStopped);
     }
     measurementwindow->show();  // Show the second window
 }
