@@ -15,6 +15,7 @@ SOURCES += \
     amodeconnection.cpp \
     amodedatamanipulator.cpp \
     amodemocaprecorder.cpp \
+    amodetimedrecorder.cpp \
     bmode3dvisualizer.cpp \
     bmodeconnection.cpp \
     datawriter.cpp \
@@ -37,6 +38,7 @@ HEADERS += \
     amodeconnection.h \
     amodedatamanipulator.h \
     amodemocaprecorder.h \
+    amodetimedrecorder.h \
     bmode3dvisualizer.h \
     bmodeconnection.h \
     datawriter.h \

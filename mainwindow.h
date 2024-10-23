@@ -18,6 +18,7 @@
 #include "mhareader.h"
 #include "volume3dcontroller.h"
 #include "volumeamodecontroller.h"
+#include "amodetimedrecorder.h"
 
 #include "measurementwindow.h"
 
@@ -56,6 +57,7 @@ private slots:
     void on_pushButton_amodeConfig_clicked();
     void on_comboBox_amodeNumber_textActivated(const QString &arg1);
     void on_pushButton_amodeWindow_clicked();
+    void on_pushButton_amodeIntermediateRecord_clicked();
 
     void on_pushButton_volumeLoad_clicked();
     void on_pushButton_volumeReconstruct_clicked();
@@ -69,6 +71,7 @@ private slots:
     void on_comboBox_volume3DSignalMode_currentIndexChanged(int index);
 
     void openMeasurementWindow();
+
 
 private:
     void slotConnect_Bmode2d3d();
@@ -87,6 +90,8 @@ private:
     MHAReader *myMHAReader                          = nullptr;
     Volume3DController *myVolume3DController        = nullptr;
     VolumeAmodeController *myVolumeAmodeController  = nullptr;
+    AmodeTimedRecorder *myAmodeTimedRecorder        = nullptr;
+
     MeasurementWindow *measurementwindow            = nullptr;
 
     // for
@@ -104,6 +109,7 @@ private:
     int downsample_nsample_;                    //!< The real length of the downsampled array
 
     bool isMHArecord            = true;         //!< Flag to inform whether we are ready for recording MHA or not
+    bool isAmodeIntermediateRecord = false;
 
     bool isBmode2d3dStream      = true;         //!< Flag to inform whether we are ready to stream B-mode 2d image and 3d visualize it or not
     bool isAmodeStream          = true;         //!< Flag to inform whether we are ready to stream A-mode data or not
