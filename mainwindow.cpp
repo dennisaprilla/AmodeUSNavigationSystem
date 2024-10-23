@@ -26,7 +26,10 @@ MainWindow::MainWindow(QWidget *parent)
     us_tvector_downsampled_ = AmodeDataManipulator::downsampleVector(us_tvector_, round((double)UltrasoundConfig::N_SAMPLE / downsample_ratio_));
     downsample_nsample_     = us_dvector_downsampled_.size();
 
-    // test create a new QCustomPlot object
+    // Initialize the focus page of the QToolBox. I want the B-mode page is the first to be seen.
+    ui->toolBox_mainMenu->setCurrentIndex(0);
+
+    // Initialize QCustomPlot object (for display, looks good rather than empty)
     amodePlot = new QCustomPlotIntervalWindow(this);
     amodePlot->setObjectName("amode_originalplot");
     amodePlot->setShadeColor(QColor(255, 0, 0, 50));
@@ -38,7 +41,7 @@ MainWindow::MainWindow(QWidget *parent)
     amodePlot->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     ui->gridLayout_amodeSignals->addWidget(amodePlot);
 
-    // Initalize scatter object, can also only be done programatically
+    // Initalize scatter object (for display too, looks good rather than empty)
     scatter = new Q3DScatter();
     scatter->setMinimumSize(QSize(2048, 2048));
     scatter->setOrthoProjection(true);
@@ -62,22 +65,22 @@ MainWindow::MainWindow(QWidget *parent)
     scatter->axisY()->setRange(0, 400);
     scatter->axisZ()->setRange(-200, 200);
 
-
-    // Assuming 'scatter' is a pointer to your Q3DScatter instance
+    // Related to Q3DScatter. Set the camera zoom
     Q3DCamera *camera = scatter->scene()->activeCamera();
     float currentZoomLevel = camera->zoomLevel();
     float newZoomLevel = currentZoomLevel + 110.0f;
     camera->setZoomLevel(newZoomLevel);
 
-    // Put the scatter object to a container and add it to the UI
+    // Also related to Q3Dscatter. Putting the scatter object to a container and add it to the UI
     QWidget *containerScatter = QWidget::createWindowContainer(scatter);
     containerScatter->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     ui->layout_volume->removeItem(ui->verticalSpacer_volume);
     ui->layout_volume->addWidget(containerScatter);
 
     // I put the initialization of myBmodeConnection here. It is quite different than
-    // the other connection objects. That is okay, because BmodeConnection basically
-    // just opening a camera, so it happen locally.
+    // the other connection objects, usually they are created when user set an action
+    // (like clicking certain button). That is okay, because BmodeConnection basically
+    // just opening a camera, so it happen locally in our pc.
     // Other reason is that i want to list all of the port available. I was planning to
     // list the name of the port, but apparently it is difficult as they are deep in
     // Microsoft media API. So i just give info about the resolution.
@@ -90,16 +93,177 @@ MainWindow::MainWindow(QWidget *parent)
     // Connect the button's clicked signal to the slot that opens the second window
     connect(ui->pushButton_recordWindow, &QPushButton::clicked, this, &MainWindow::openMeasurementWindow);
 
+
+    // Show the main window first
+    this->show();
+
+    // Use QTimer::singleShot to delay the input dialog slightly, so the main window shows up first
+    QTimer::singleShot(0, this, [this]() {
+        if(initNewTrial())
+        {
+            QMessageBox::information(this, "Welcome", "Let's move on!");
+        }
+        else
+        {
+            QMessageBox::warning(this, "Warning", "Something went wrong when trying to initialize directories for new trial");
+            QApplication::quit();
+        }
+    });
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
-    // delete myBmodeConnection;
-    // delete myMocapConnection;
-    // delete myMHAWriter;
-    // delete myAmodeConnection;
-    // delete myAmodeConfig;
+}
+
+
+/* *****************************************************************************************
+ * *****************************************************************************************
+ *
+ * Everything that is related to initialization of the project directories
+ *
+ * *****************************************************************************************
+ * ***************************************************************************************** */
+
+
+bool MainWindow::initNewTrial()
+{
+    // initialize some variables
+    QString trialname;
+
+    // initialze the dialog box
+    QInputDialog dialog(this);
+    dialog.setWindowTitle("Welcome");
+    dialog.setLabelText("Enter the new trial session name:");
+    dialog.setTextValue("");
+    dialog.setInputMode(QInputDialog::TextInput);
+    dialog.setWindowModality(Qt::WindowModal);
+
+    // Execute the dialog modally
+    while (dialog.exec() == QDialog::Accepted)
+    {
+        // get the text value
+        trialname = dialog.textValue();
+
+        // if it is not empty and valid name, break the loop
+        if (!trialname.isEmpty() && isValidWindowsFolderName(trialname))
+            break;
+        // else, let's give a warning to the user
+        else
+            QMessageBox::warning(this, "Invalid Name", "The folder name is invalid.\nEnsure the name does not contain invalid characters or reserved words.");
+    }
+
+    // If the dialog was rejected (i.e., Cancel clicked or dialog closed)
+    if (dialog.result() == QDialog::Rejected)
+        trialname = "randomsubject";
+
+    // Let's start initializing our trial directory
+    QDir dir(path_root_);
+    // Check if the directory already exists
+    if (!dir.exists())
+    {
+        // Attempt to create the directory
+        if (!dir.mkpath(path_root_))
+        {
+            qDebug() << "Failed to create folder:" << path_root_;
+            return false;
+        }
+    }
+
+    // initialize the trial directory and path
+    dir_trial_  = createNewTrialFolder(path_root_, trialname);
+    // if it returns empty, something went wrong, let's not continue;
+    if (dir_trial_.isEmpty())
+        return false;
+
+    // initialize our path to trial
+    path_trial_ = path_root_ + "/" + dir_trial_;
+
+    // initialize some QLineEdit, to make things easier for the user
+    ui->lineEdit_mhaPath->setText(path_trial_+"/");
+    ui->lineEdit_volumeOutput->setText(path_trial_+"/");
+
+    // if the function executed till here, it means everything is good
+    return true;
+}
+
+bool MainWindow::isValidWindowsFolderName(const QString &name) {
+    // Check length (255 characters limit)
+    if (name.length() > 255) {
+        return false;
+    }
+
+    // Windows forbidden characters: \ / : * ? " < > |
+    QString forbiddenChars = R"(<>:"/\|?* )";
+
+    // Check for any invalid characters
+    if (name.contains(QRegularExpression("[" + QRegularExpression::escape(forbiddenChars) + "]"))) {
+        return false;
+    }
+
+    // Check for reserved names in Windows
+    QStringList reservedNames = {"CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+                                 "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"};
+
+    QString upperName = name.toUpper();  // Case insensitive comparison for Windows reserved names
+    if (reservedNames.contains(upperName)) {
+        return false;
+    }
+
+    return true;
+}
+
+QString MainWindow::createNewTrialFolder(const QString &directoryPath, const QString &name) {
+    // Define the directory
+    QDir dir(directoryPath);
+    if (!dir.exists()) {
+        qWarning() << "Directory does not exist:" << directoryPath;
+        return "";
+    }
+
+    // Regular expression to match folder names of format "trial_<num>_<name>"
+    QRegularExpression regex("^trial_(\\d{4})_.*$");
+    int maxNum = -1;
+
+    // Iterate through the existing folders in the directory
+    for (const QFileInfo &entry : dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+        QRegularExpressionMatch match = regex.match(entry.fileName());
+        if (match.hasMatch()) {
+            int currentNum = match.captured(1).toInt();
+            if (currentNum > maxNum) {
+                maxNum = currentNum;
+            }
+        }
+    }
+
+    // Increment the max number to get the new folder number
+    int newNum = maxNum + 1;
+
+    // Format the new folder name with leading zeros
+    QString newFolderName = QString("trial_%1_%2").arg(newNum, 4, 10, QChar('0')).arg(name);
+
+    // Create the new folder
+    if (!dir.mkdir(newFolderName))
+    {
+        qWarning() << "Failed to create folder:" << newFolderName;
+        return "";
+    }
+
+    qDebug() << "Successfully created folder:" << newFolderName;
+
+    // Define the paths for the subfolders
+    QString newFolderPath = dir.filePath(newFolderName);
+    QDir newDir(newFolderPath);
+
+    // Create subfolders
+    QStringList subFolders = {dir_bonescan_, dir_intermediate_, dir_measurement_};
+    for (const QString &subFolder : subFolders)
+    {
+        if (!newDir.mkdir(subFolder)) return "";
+    }
+
+    // if the function execute till here, it means everything is good
+    return newFolderName;
 }
 
 
@@ -943,7 +1107,8 @@ void MainWindow::on_pushButton_amodeConfig_clicked()
     ui->lineEdit_amodeConfig->setText(fileName);
 
     // Instantiate AmodeConfig object that will handle the reading of the config file
-    myAmodeConfig = new AmodeConfig(fileName.toStdString());
+    QString filedir_window = path_trial_+"/"+dir_intermediate_;
+    myAmodeConfig = new AmodeConfig(fileName.toStdString(), filedir_window.toStdString());
     // get all the group names, so that later we can show the amode signal based on group we selected
     std::vector<std::string> amode_groupnames = myAmodeConfig->getAllGroupNames();
 
@@ -1173,11 +1338,13 @@ void MainWindow::on_pushButton_amodeIntermediateRecord_clicked()
     // if the isAmodeIntermediateRecord now is false, it means we are not recording. Let's record.
     if (!isAmodeIntermediateRecord)
     {
+        // instantiate AmodeTimedRecorder
         myAmodeTimedRecorder = new AmodeTimedRecorder();
-        myAmodeTimedRecorder->setFilePath("D:/amodebmodequalisys/test_intermediaterecording");
+        myAmodeTimedRecorder->setFilePath(path_trial_+"/"+dir_intermediate_+"/");
         myAmodeTimedRecorder->setFilePostfix(ui->comboBox_amodeNumber->currentText());
         myAmodeTimedRecorder->setRecordTimer(1000);
 
+        // connect signal from AmodeConnection::dataReceived to slot function AmodeTimedRecorder::onAmodeSignalReceived and start record
         connect(myAmodeConnection, &AmodeConnection::dataReceived, myAmodeTimedRecorder, &AmodeTimedRecorder::onAmodeSignalReceived);
         myAmodeTimedRecorder->startRecording();
 
