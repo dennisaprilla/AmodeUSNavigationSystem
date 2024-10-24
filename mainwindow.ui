@@ -399,15 +399,21 @@ li.checked::marker { content: &quot;\2612&quot;; }
                </widget>
               </item>
               <item>
-               <widget class="QPushButton" name="pushButton_amodeIntermediateRecord">
-                <property name="enabled">
-                 <bool>false</bool>
+               <widget class="QLabel" name="label_indicatorIntermRec">
+                <property name="minimumSize">
+                 <size>
+                  <width>25</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">QLabel {
+background-color: gray; 
+border-radius: 12px;
+}</string>
                 </property>
                 <property name="text">
                  <string/>
-                </property>
-                <property name="icon">
-                 <iconset theme="process-working"/>
                 </property>
                </widget>
               </item>

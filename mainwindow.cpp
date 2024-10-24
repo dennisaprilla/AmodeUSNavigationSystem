@@ -1312,7 +1312,7 @@ void MainWindow::on_pushButton_amodeWindow_clicked()
         // if user okay with it, let's start the recording, the implementation is inside this button.
         // if not, just ignore it.
         if (reply == QMessageBox::Ok) {
-            on_pushButton_amodeIntermediateRecord_clicked();
+            startIntermediateRecording();
         } else {
             return;
         }
@@ -1327,6 +1327,71 @@ void MainWindow::on_pushButton_amodeWindow_clicked()
     }
 }
 
+void MainWindow::startIntermediateRecording()
+{
+    if(myAmodeConnection==nullptr)
+    {
+        QMessageBox::warning(this, "Cannot record", "Can't perfrom intermediate recording. A-mode machine is not connected yet");
+        return;
+    }
+
+    // if the isAmodeIntermediateRecord now is false, it means we are not recording. Let's record.
+    if (!isAmodeIntermediateRecord)
+    {
+        // instantiate AmodeTimedRecorder
+        myAmodeTimedRecorder = new AmodeTimedRecorder();
+        myAmodeTimedRecorder->setFilePath(path_trial_+"/"+dir_intermediate_+"/");
+        myAmodeTimedRecorder->setFilePostfix(ui->comboBox_amodeNumber->currentText());
+        myAmodeTimedRecorder->setRecordTimer(1000);
+
+        // connect signal from AmodeConnection::dataReceived to slot function AmodeTimedRecorder::onAmodeSignalReceived and start record
+        connect(myAmodeConnection, &AmodeConnection::dataReceived, myAmodeTimedRecorder, &AmodeTimedRecorder::onAmodeSignalReceived);
+        connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, this, &MainWindow::on_amodeTimedRecordingStopped);
+
+        // start recording, and emit signal to indicate that we are now performing intermediate recording
+        // this signal should be caught by MeasurementWindow
+        myAmodeTimedRecorder->startRecording();
+        emit amodeTimedRecordingStarted(myAmodeTimedRecorder);
+
+        // set the flag
+        isAmodeIntermediateRecord = true;
+        ui->label_indicatorIntermRec->setStyleSheet("QLabel{background-color: green; border-radius: 12px;}");
+    }
+
+    // if isAmodeIntermediateRecord is now true, it means we are recording. Let's stop the record
+    else
+    {
+        // but fist, ask user confirmation
+        QMessageBox::StandardButton reply;
+        reply = QMessageBox::question( this, "Confirmation",
+                                      "Are you sure you want to stop the intermediate recording? You will loose the bridge between "
+                                      "Navigation Activity and Measurement Activity.",
+                                      QMessageBox::Ok | QMessageBox::Cancel);
+
+        // if use hit cancel, ignore everything else
+        if (reply == QMessageBox::Cancel) {
+            qDebug() << "MainWindow::on_pushButton_amodeIntermediateRecord_clicked() cancelling stopping, continuing intermediate recording now.";
+            return;
+        }
+
+        // stopping the recording
+        myAmodeTimedRecorder->stopRecording();
+
+        // reset the flag
+        isAmodeIntermediateRecord = false;
+        ui->label_indicatorIntermRec->setStyleSheet("QLabel{background-color: green; border-radius: 12px;}");
+
+        // cleaning up will be executed by MainWindow::on_amodeTimedRecordingStopped()
+        // and this function is invoked by the a signal that is emitted in AmodeTimedRecorder::stopRecording.
+    }
+}
+
+/* I probably still want to use this button, so i didn't delete it completely yet.
+ * This button is for controlling the start and the stop of intermediate recording.
+ * It is cumbersome if the user has this power, the navigation pipeline process can be a mess.
+ * So i decided to lead the user with a very specific steps, such that they don't need this button.
+ *
+ *
 void MainWindow::on_pushButton_amodeIntermediateRecord_clicked()
 {
     if(myAmodeConnection==nullptr)
@@ -1375,12 +1440,17 @@ void MainWindow::on_pushButton_amodeIntermediateRecord_clicked()
         }
 
         // stopping the recording
-        myAmodeTimedRecorder->stopRecording();
+        myAmodeTimedRecorder->stopRecording();        
+
+        // reset the flag
+        isAmodeIntermediateRecord = false;
+        ui->pushButton_amodeIntermediateRecord->setIcon(QIcon::fromTheme("process-working"));
 
         // cleaning up will be executed by MainWindow::on_amodeTimedRecordingStopped()
         // and this function is invoked by the a signal that is emitted in AmodeTimedRecorder::stopRecording.
     }
 }
+*/
 
 
 void MainWindow::on_amodeTimedRecordingStopped()
@@ -1393,10 +1463,6 @@ void MainWindow::on_amodeTimedRecordingStopped()
     delete myAmodeTimedRecorder;
     myAmodeTimedRecorder = nullptr;
     emit amodeTimedRecordingStopped();
-
-    // reset the flag
-    isAmodeIntermediateRecord = false;
-    ui->pushButton_amodeIntermediateRecord->setIcon(QIcon::fromTheme("process-working"));
 }
 
 

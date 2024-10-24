@@ -76,14 +76,20 @@ private slots:
 
 
 private:
+
+    // functions for directory initialization
     bool initNewTrial();
     bool isValidWindowsFolderName(const QString &name);
     QString createNewTrialFolder(const QString &directoryPath, const QString &name);
 
+    // function for grouping connect and disconnecting the connection
     void slotConnect_Bmode2d3d();
     void slotDisconnect_Bmode2d3d();
     void slotConnect_Amode();
     void slotDisconnect_Amode();
+
+    // other functions
+    void startIntermediateRecording();
 
     Ui::MainWindow *ui;
 

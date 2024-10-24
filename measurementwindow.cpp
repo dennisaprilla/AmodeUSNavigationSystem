@@ -83,7 +83,7 @@ void MeasurementWindow::on_amodeTimedRecordingStopped()
 {
     myAmodeTimedRecorder = nullptr;
     ui->label_statusIntermRec->setText("Idle");
-    ui->label_statusIntermRec->setStyleSheet("QLabel { color : rgb(255, 85, 0); background-color : rgb(255, 255, 127); }");
+    ui->label_statusIntermRec->setStyleSheet("QLabel { color : rgb(100, 100, 100); background-color : rgb(200, 200, 200); }");
 }
 
 
