@@ -26,7 +26,10 @@ MainWindow::MainWindow(QWidget *parent)
     us_tvector_downsampled_ = AmodeDataManipulator::downsampleVector(us_tvector_, round((double)UltrasoundConfig::N_SAMPLE / downsample_ratio_));
     downsample_nsample_     = us_dvector_downsampled_.size();
 
-    // test create a new QCustomPlot object
+    // Initialize the focus page of the QToolBox. I want the B-mode page is the first to be seen.
+    ui->toolBox_mainMenu->setCurrentIndex(0);
+
+    // Initialize QCustomPlot object (for display, looks good rather than empty)
     amodePlot = new QCustomPlotIntervalWindow(this);
     amodePlot->setObjectName("amode_originalplot");
     amodePlot->setShadeColor(QColor(255, 0, 0, 50));
@@ -38,7 +41,7 @@ MainWindow::MainWindow(QWidget *parent)
     amodePlot->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     ui->gridLayout_amodeSignals->addWidget(amodePlot);
 
-    // Initalize scatter object, can also only be done programatically
+    // Initalize scatter object (for display too, looks good rather than empty)
     scatter = new Q3DScatter();
     scatter->setMinimumSize(QSize(2048, 2048));
     scatter->setOrthoProjection(true);
@@ -62,22 +65,22 @@ MainWindow::MainWindow(QWidget *parent)
     scatter->axisY()->setRange(0, 400);
     scatter->axisZ()->setRange(-200, 200);
 
-
-    // Assuming 'scatter' is a pointer to your Q3DScatter instance
+    // Related to Q3DScatter. Set the camera zoom
     Q3DCamera *camera = scatter->scene()->activeCamera();
     float currentZoomLevel = camera->zoomLevel();
     float newZoomLevel = currentZoomLevel + 110.0f;
     camera->setZoomLevel(newZoomLevel);
 
-    // Put the scatter object to a container and add it to the UI
+    // Also related to Q3Dscatter. Putting the scatter object to a container and add it to the UI
     QWidget *containerScatter = QWidget::createWindowContainer(scatter);
     containerScatter->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     ui->layout_volume->removeItem(ui->verticalSpacer_volume);
     ui->layout_volume->addWidget(containerScatter);
 
     // I put the initialization of myBmodeConnection here. It is quite different than
-    // the other connection objects. That is okay, because BmodeConnection basically
-    // just opening a camera, so it happen locally.
+    // the other connection objects, usually they are created when user set an action
+    // (like clicking certain button). That is okay, because BmodeConnection basically
+    // just opening a camera, so it happen locally in our pc.
     // Other reason is that i want to list all of the port available. I was planning to
     // list the name of the port, but apparently it is difficult as they are deep in
     // Microsoft media API. So i just give info about the resolution.
@@ -90,16 +93,177 @@ MainWindow::MainWindow(QWidget *parent)
     // Connect the button's clicked signal to the slot that opens the second window
     connect(ui->pushButton_recordWindow, &QPushButton::clicked, this, &MainWindow::openMeasurementWindow);
 
+
+    // Show the main window first
+    this->show();
+
+    // Use QTimer::singleShot to delay the input dialog slightly, so the main window shows up first
+    QTimer::singleShot(0, this, [this]() {
+        if(initNewTrial())
+        {
+            QMessageBox::information(this, "Welcome", "Let's move on!");
+        }
+        else
+        {
+            QMessageBox::warning(this, "Warning", "Something went wrong when trying to initialize directories for new trial");
+            QApplication::quit();
+        }
+    });
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
-    // delete myBmodeConnection;
-    // delete myMocapConnection;
-    // delete myMHAWriter;
-    // delete myAmodeConnection;
-    // delete myAmodeConfig;
+}
+
+
+/* *****************************************************************************************
+ * *****************************************************************************************
+ *
+ * Everything that is related to initialization of the project directories
+ *
+ * *****************************************************************************************
+ * ***************************************************************************************** */
+
+
+bool MainWindow::initNewTrial()
+{
+    // initialize some variables
+    QString trialname;
+
+    // initialze the dialog box
+    QInputDialog dialog(this);
+    dialog.setWindowTitle("Welcome");
+    dialog.setLabelText("Enter the new trial session name:");
+    dialog.setTextValue("");
+    dialog.setInputMode(QInputDialog::TextInput);
+    dialog.setWindowModality(Qt::WindowModal);
+
+    // Execute the dialog modally
+    while (dialog.exec() == QDialog::Accepted)
+    {
+        // get the text value
+        trialname = dialog.textValue();
+
+        // if it is not empty and valid name, break the loop
+        if (!trialname.isEmpty() && isValidWindowsFolderName(trialname))
+            break;
+        // else, let's give a warning to the user
+        else
+            QMessageBox::warning(this, "Invalid Name", "The folder name is invalid.\nEnsure the name does not contain invalid characters or reserved words.");
+    }
+
+    // If the dialog was rejected (i.e., Cancel clicked or dialog closed)
+    if (dialog.result() == QDialog::Rejected)
+        trialname = "randomsubject";
+
+    // Let's start initializing our trial directory
+    QDir dir(path_root_);
+    // Check if the directory already exists
+    if (!dir.exists())
+    {
+        // Attempt to create the directory
+        if (!dir.mkpath(path_root_))
+        {
+            qDebug() << "Failed to create folder:" << path_root_;
+            return false;
+        }
+    }
+
+    // initialize the trial directory and path
+    dir_trial_  = createNewTrialFolder(path_root_, trialname);
+    // if it returns empty, something went wrong, let's not continue;
+    if (dir_trial_.isEmpty())
+        return false;
+
+    // initialize our path to trial
+    path_trial_ = path_root_ + "/" + dir_trial_;
+
+    // initialize some QLineEdit, to make things easier for the user
+    ui->lineEdit_mhaPath->setText(path_trial_+"/");
+    ui->lineEdit_volumeOutput->setText(path_trial_+"/");
+
+    // if the function executed till here, it means everything is good
+    return true;
+}
+
+bool MainWindow::isValidWindowsFolderName(const QString &name) {
+    // Check length (255 characters limit)
+    if (name.length() > 255) {
+        return false;
+    }
+
+    // Windows forbidden characters: \ / : * ? " < > |
+    QString forbiddenChars = R"(<>:"/\|?* )";
+
+    // Check for any invalid characters
+    if (name.contains(QRegularExpression("[" + QRegularExpression::escape(forbiddenChars) + "]"))) {
+        return false;
+    }
+
+    // Check for reserved names in Windows
+    QStringList reservedNames = {"CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+                                 "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"};
+
+    QString upperName = name.toUpper();  // Case insensitive comparison for Windows reserved names
+    if (reservedNames.contains(upperName)) {
+        return false;
+    }
+
+    return true;
+}
+
+QString MainWindow::createNewTrialFolder(const QString &directoryPath, const QString &name) {
+    // Define the directory
+    QDir dir(directoryPath);
+    if (!dir.exists()) {
+        qWarning() << "MainWindow::createNewTrialFolder() Directory does not exist:" << directoryPath;
+        return "";
+    }
+
+    // Regular expression to match folder names of format "trial_<num>_<name>"
+    QRegularExpression regex("^trial_(\\d{4})_.*$");
+    int maxNum = -1;
+
+    // Iterate through the existing folders in the directory
+    for (const QFileInfo &entry : dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+        QRegularExpressionMatch match = regex.match(entry.fileName());
+        if (match.hasMatch()) {
+            int currentNum = match.captured(1).toInt();
+            if (currentNum > maxNum) {
+                maxNum = currentNum;
+            }
+        }
+    }
+
+    // Increment the max number to get the new folder number
+    int newNum = maxNum + 1;
+
+    // Format the new folder name with leading zeros
+    QString newFolderName = QString("trial_%1_%2").arg(newNum, 4, 10, QChar('0')).arg(name);
+
+    // Create the new folder
+    if (!dir.mkdir(newFolderName))
+    {
+        qWarning() << "MainWindow::createNewTrialFolder() Failed to create folder:" << newFolderName;
+        return "";
+    }
+
+    qDebug() << "MainWindow::createNewTrialFolder() Successfully created folder:" << newFolderName;
+
+    // Define the paths for the subfolders
+    QString newFolderPath = dir.filePath(newFolderName);
+    QDir newDir(newFolderPath);
+
+    // Create subfolders
+    QStringList subFolders = {dir_bonescan_, dir_intermediate_, dir_measurement_};
+    for (const QString &subFolder : subFolders)
+    {
+        if (!newDir.mkdir(subFolder)) return "";
+    }
+
+    // if the function execute till here, it means everything is good
+    return newFolderName;
 }
 
 
@@ -943,7 +1107,8 @@ void MainWindow::on_pushButton_amodeConfig_clicked()
     ui->lineEdit_amodeConfig->setText(fileName);
 
     // Instantiate AmodeConfig object that will handle the reading of the config file
-    myAmodeConfig = new AmodeConfig(fileName.toStdString());
+    QString filedir_window = path_trial_+"/"+dir_intermediate_;
+    myAmodeConfig = new AmodeConfig(fileName.toStdString(), filedir_window.toStdString());
     // get all the group names, so that later we can show the amode signal based on group we selected
     std::vector<std::string> amode_groupnames = myAmodeConfig->getAllGroupNames();
 
@@ -1068,7 +1233,6 @@ void MainWindow::on_pushButton_amodeWindow_clicked()
 {
     if(myAmodeConfig==nullptr)
     {
-        // Inform the user about the invalid input
         QMessageBox::warning(this, "Cannot save window", "You need to open the amode configuration file first");
         return;
     }
@@ -1128,7 +1292,183 @@ void MainWindow::on_pushButton_amodeWindow_clicked()
         QMessageBox::information(this, "Saving failed", "There is something wrong when saving the window configuration file");
 
 
+    // Here is the part when the user can decide whether they want to do an intermediate recording between
+    // navigation phase to recording phase. This intermediate recording is helpful for post-processing, to
+    // make a bridge between a-mode window initialization in navigation phase to the measurement phase.
+    // This recording requires connection is already established.
+    if(myAmodeConnection==nullptr)
+        return;
+
+    // If the user never initialize myAmodeTimedRecorder, let's initialize it now.
+    if(myAmodeTimedRecorder==nullptr)
+    {
+        // ask user confirmation
+        QMessageBox::StandardButton reply;
+        reply = QMessageBox::question( this, "Confirmation",
+                                      "This intermediate recording is helpful for the bridge between your Navigation Activity "
+                                      "to Measurement Activity in postprocessing. Do you want to start the intermediate recording now?",
+                                      QMessageBox::Ok | QMessageBox::Cancel);
+
+        // if user okay with it, let's start the recording, the implementation is inside this button.
+        // if not, just ignore it.
+        if (reply == QMessageBox::Ok) {
+            startIntermediateRecording();
+        } else {
+            return;
+        }
+    }
+
+    // Is user already initialize myAmodeTimedRecorder, we don't need initialization anymore, but we need
+    // to change the postfix of the naming. This allows the user, in post-processing phase, knows the time
+    // when he finishes setting up the a-mode.
+    else
+    {
+        myAmodeTimedRecorder->setFilePostfix(ui->comboBox_amodeNumber->currentText());
+    }
 }
+
+void MainWindow::startIntermediateRecording()
+{
+    if(myAmodeConnection==nullptr)
+    {
+        QMessageBox::warning(this, "Cannot record", "Can't perfrom intermediate recording. A-mode machine is not connected yet");
+        return;
+    }
+
+    // if the isAmodeIntermediateRecord now is false, it means we are not recording. Let's record.
+    if (!isAmodeIntermediateRecord)
+    {
+        // instantiate AmodeTimedRecorder
+        myAmodeTimedRecorder = new AmodeTimedRecorder();
+        myAmodeTimedRecorder->setFilePath(path_trial_+"/"+dir_intermediate_+"/");
+        myAmodeTimedRecorder->setFilePostfix(ui->comboBox_amodeNumber->currentText());
+        myAmodeTimedRecorder->setRecordTimer(1000);
+
+        // connect signal from AmodeConnection::dataReceived to slot function AmodeTimedRecorder::onAmodeSignalReceived and start record
+        connect(myAmodeConnection, &AmodeConnection::dataReceived, myAmodeTimedRecorder, &AmodeTimedRecorder::on_amodeSignalReceived);
+        if (measurementwindow!=nullptr)
+        {
+            connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStarted, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStarted, Qt::UniqueConnection);
+            connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStopped, Qt::UniqueConnection);
+            connect(measurementwindow, &MeasurementWindow::request_stop_amodeTimedRecording, myAmodeTimedRecorder, &AmodeTimedRecorder::requested_stop_amodeTimedRecording, Qt::UniqueConnection);
+        }
+
+        // start recording, and emit signal to indicate that we are now performing intermediate recording
+        // this signal should be caught by MeasurementWindow
+        myAmodeTimedRecorder->startRecording();
+
+        // set the flag
+        isAmodeIntermediateRecord = true;
+        ui->label_indicatorIntermRec->setStyleSheet("QLabel{background-color: green; border-radius: 5px;}");
+    }
+
+    // if isAmodeIntermediateRecord is now true, it means we are recording. Let's stop the record
+    else
+    {
+        // but fist, ask user confirmation
+        QMessageBox::StandardButton reply;
+        reply = QMessageBox::question( this, "Confirmation",
+                                      "Are you sure you want to stop the intermediate recording? You will loose the bridge between "
+                                      "Navigation Activity and Measurement Activity.",
+                                      QMessageBox::Ok | QMessageBox::Cancel);
+
+        // if use hit cancel, ignore everything else
+        if (reply == QMessageBox::Cancel)
+        {
+            qDebug() << "MainWindow::on_pushButton_amodeIntermediateRecord_clicked() cancelling stopping, continuing intermediate recording now.";
+            return;
+        }
+
+        // stopping the recording
+        myAmodeTimedRecorder->stopRecording();
+
+        // disconnect any signal
+        disconnect(myAmodeConnection, &AmodeConnection::dataReceived, myAmodeTimedRecorder, &AmodeTimedRecorder::on_amodeSignalReceived);
+        if (measurementwindow!=nullptr)
+        {
+            disconnect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStarted, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStarted);
+            disconnect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStopped);
+            connect(measurementwindow, &MeasurementWindow::request_stop_amodeTimedRecording, myAmodeTimedRecorder, &AmodeTimedRecorder::requested_stop_amodeTimedRecording);
+        }
+
+
+        // delete the object??
+        delete myAmodeTimedRecorder;
+        myAmodeTimedRecorder = nullptr;
+
+        // reset the flag
+        isAmodeIntermediateRecord = false;
+        ui->label_indicatorIntermRec->setStyleSheet("QLabel{background-color: rgb(200,255,200); border-radius: 5px;}");
+
+    }
+}
+
+/* I probably still want to use this button, so i didn't delete it completely yet.
+ * This button is for controlling the start and the stop of intermediate recording.
+ * It is cumbersome if the user has this power, the navigation pipeline process can be a mess.
+ * So i decided to lead the user with a very specific steps, such that they don't need this button.
+ *
+ *
+void MainWindow::on_pushButton_amodeIntermediateRecord_clicked()
+{
+    if(myAmodeConnection==nullptr)
+    {
+        QMessageBox::warning(this, "Cannot record", "Can't perfrom intermediate recording. A-mode machine is not connected yet");
+        return;
+    }
+
+    // if the isAmodeIntermediateRecord now is false, it means we are not recording. Let's record.
+    if (!isAmodeIntermediateRecord)
+    {
+        // instantiate AmodeTimedRecorder
+        myAmodeTimedRecorder = new AmodeTimedRecorder();
+        myAmodeTimedRecorder->setFilePath(path_trial_+"/"+dir_intermediate_+"/");
+        myAmodeTimedRecorder->setFilePostfix(ui->comboBox_amodeNumber->currentText());
+        myAmodeTimedRecorder->setRecordTimer(1000);
+
+        // connect signal from AmodeConnection::dataReceived to slot function AmodeTimedRecorder::onAmodeSignalReceived and start record
+        connect(myAmodeConnection, &AmodeConnection::dataReceived, myAmodeTimedRecorder, &AmodeTimedRecorder::onAmodeSignalReceived);
+        connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, this, &MainWindow::on_amodeTimedRecordingStopped);
+
+        // start recording, and emit signal to indicate that we are now performing intermediate recording
+        // this signal should be caught by MeasurementWindow
+        myAmodeTimedRecorder->startRecording();
+        emit amodeTimedRecordingStarted(myAmodeTimedRecorder);
+
+        // set the flag
+        isAmodeIntermediateRecord = true;
+        ui->pushButton_amodeIntermediateRecord->setIcon(QIcon::fromTheme("media-playback-stop"));
+    }
+
+    // if isAmodeIntermediateRecord is now true, it means we are recording. Let's stop the record
+    else
+    {
+        // but fist, ask user confirmation
+        QMessageBox::StandardButton reply;
+        reply = QMessageBox::question( this, "Confirmation",
+                                      "Are you sure you want to stop the intermediate recording? You will loose the bridge between "
+                                      "Navigation Activity and Measurement Activity.",
+                                      QMessageBox::Ok | QMessageBox::Cancel);
+
+        // if use hit cancel, ignore everything else
+        if (reply == QMessageBox::Cancel) {
+            qDebug() << "MainWindow::on_pushButton_amodeIntermediateRecord_clicked() cancelling stopping, continuing intermediate recording now.";
+            return;
+        }
+
+        // stopping the recording
+        myAmodeTimedRecorder->stopRecording();        
+
+        // reset the flag
+        isAmodeIntermediateRecord = false;
+        ui->pushButton_amodeIntermediateRecord->setIcon(QIcon::fromTheme("process-working"));
+
+        // cleaning up will be executed by MainWindow::on_amodeTimedRecordingStopped()
+        // and this function is invoked by the a signal that is emitted in AmodeTimedRecorder::stopRecording.
+    }
+}
+*/
+
 
 
 /* *****************************************************************************************
@@ -1229,14 +1569,27 @@ void MainWindow::openMeasurementWindow()
 {
     // Create the second window if it does not already exist
     if (!measurementwindow) {
+
         // Create an instance of the recording window
-        measurementwindow = new MeasurementWindow(myAmodeConnection, myMocapConnection);
+        measurementwindow = new MeasurementWindow(myAmodeConnection, myMocapConnection, myAmodeTimedRecorder!=nullptr);
+        measurementwindow->setRecordPath(path_trial_+"/"+dir_measurement_);
+
         // Connect the necessary signal to slots
         connect(this, &MainWindow::amodeConnected, measurementwindow, &MeasurementWindow::on_amodeConnected);
         connect(this, &MainWindow::amodeDisconnected, measurementwindow, &MeasurementWindow::on_amodeDisconnected);
         connect(this, &MainWindow::mocapConnected, measurementwindow, &MeasurementWindow::on_mocapConnected);
         // connect(this, &MainWindow::mocapDisconnected, measurementwindow, &MeasurementWindow::on_mocapDisconnected);
+
+        if(myAmodeTimedRecorder!=nullptr)
+        {
+            connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStarted, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStarted, Qt::UniqueConnection);
+            connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStopped, Qt::UniqueConnection);
+            connect(measurementwindow, &MeasurementWindow::request_stop_amodeTimedRecording, myAmodeTimedRecorder, &AmodeTimedRecorder::requested_stop_amodeTimedRecording, Qt::UniqueConnection);
+        }
+
     }
     measurementwindow->show();  // Show the second window
 }
+
+
 

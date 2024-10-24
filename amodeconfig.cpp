@@ -5,9 +5,11 @@
 #include <sstream>
 #include <iostream>
 
+#include "qdebug.h"
+#include "qlogging.h"
 #include "ultrasoundconfig.h"
 
-AmodeConfig::AmodeConfig(const std::string& filepath) {
+AmodeConfig::AmodeConfig(const std::string& filepath, const std::string& filedir_window) {
     // get the filename and the file dir
     std::filesystem::path path(filepath);
     filename_ = path.stem().string();
@@ -19,7 +21,7 @@ AmodeConfig::AmodeConfig(const std::string& filepath) {
     // if i initialize it in the function
     // where i export the config file, it will create new file everytime i call
     // the function. so better i initialize the name here
-    filepath_window = filedir_ + filename_+ "_window"+ getCurrentDateTime() +".csv";
+    filepath_window_ = filedir_window + "/" + filename_+ "_window"+ getCurrentDateTime() +".csv";
 
     // load the Amode configuration data
     loadData(filepath);
@@ -72,10 +74,10 @@ void AmodeConfig::loadData(const std::string& filepath) {
 bool AmodeConfig::exportWindow()
 {
     // create new file, in the same directory as the amodeconfig file
-    std::ofstream file(filepath_window, std::ios::out);
+    std::ofstream file(filepath_window_, std::ios::out);
 
     if (!file.is_open()) {
-        std::cerr << "Error: Unable to open file " << filepath_window << std::endl;
+        qDebug() << "AmodeConfig::exportWindow() Error: Unable to open file " << filepath_window_;
         return false;
     }
 
@@ -94,7 +96,7 @@ bool AmodeConfig::exportWindow()
              << window.upperbound << "\n";
 
         if (file.fail()) {
-            std::cerr << "Error: Failed to write data to file" << std::endl;
+            qDebug() << "AmodeConfig::exportWindow() Error: Failed to write data to file";
             file.close();
             return false;
         }
@@ -103,11 +105,11 @@ bool AmodeConfig::exportWindow()
     file.close();
 
     if (file.fail()) {
-        std::cerr << "Error: Failed to close file properly" << std::endl;
+        qDebug() << "AmodeConfig::exportWindow() Error: Failed to close file properly";
         return false;
     }
 
-    std::cout << "Data exported successfully to " << filepath_window << std::endl;
+    qDebug() << "AmodeConfig::exportWindow() Data exported successfully to " << filepath_window_;
     return true;
 }
 
@@ -175,9 +177,6 @@ void AmodeConfig::setWindowByNumber(int number, std::array<std::optional<double>
             dataWindow[number].lowerbound = window[0].has_value() ? window[0].value() : 0.0;
             dataWindow[number].upperbound = window[2].has_value() ? window[2].value() : UltrasoundConfig::N_SAMPLE*UltrasoundConfig::DS;
         }
-
-
-
     }
     else
     {

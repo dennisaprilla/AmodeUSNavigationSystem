@@ -64,7 +64,7 @@ public:
     /**
      * @brief Constructor function, it loads the csv file directly by calling loadData() function
      */
-    AmodeConfig(const std::string& filepath);
+    AmodeConfig(const std::string& filepath, const std::string& filedir_window);
 
     /**
      * @brief To GET the configuration data with the provided probe number
@@ -111,7 +111,7 @@ private:
     std::string filepath_;              //!< a full path to the file
     std::string filename_;              //!< the name of the amode config file
     std::string filedir_;               //!< the directory to the amode config file
-    std::string filepath_window;        //!< a full path to the window config file
+    std::string filepath_window_;        //!< a full path to the window config file
 
     std::map<int, Data> dataMap;         //!< a map variable that maps index to data, used for storing the configuration data
     std::map<int, Window> dataWindow;    //!< a map variable that maps index to data, used for storing the configuration data
