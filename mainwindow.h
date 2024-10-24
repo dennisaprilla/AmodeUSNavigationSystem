@@ -46,8 +46,6 @@ public slots:
     void volumeReconstructorCmdStandardOutput();
     void volumeReconstructorCmdStandardError();
 
-    void on_amodeTimedRecordingStopped();
-
 private slots:
     // void on_pushButton_startCamera_clicked();
     // void on_pushButton_qualisysConnect_clicked();
@@ -59,7 +57,7 @@ private slots:
     void on_pushButton_amodeConfig_clicked();
     void on_comboBox_amodeNumber_textActivated(const QString &arg1);
     void on_pushButton_amodeWindow_clicked();
-    void on_pushButton_amodeIntermediateRecord_clicked();
+    // void on_pushButton_amodeIntermediateRecord_clicked();
 
     void on_pushButton_volumeLoad_clicked();
     void on_pushButton_volumeReconstruct_clicked();
@@ -73,7 +71,6 @@ private slots:
     void on_comboBox_volume3DSignalMode_currentIndexChanged(int index);
 
     void openMeasurementWindow();
-
 
 private:
 

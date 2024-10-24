@@ -1345,17 +1345,21 @@ void MainWindow::startIntermediateRecording()
         myAmodeTimedRecorder->setRecordTimer(1000);
 
         // connect signal from AmodeConnection::dataReceived to slot function AmodeTimedRecorder::onAmodeSignalReceived and start record
-        connect(myAmodeConnection, &AmodeConnection::dataReceived, myAmodeTimedRecorder, &AmodeTimedRecorder::onAmodeSignalReceived);
-        connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, this, &MainWindow::on_amodeTimedRecordingStopped);
+        connect(myAmodeConnection, &AmodeConnection::dataReceived, myAmodeTimedRecorder, &AmodeTimedRecorder::on_amodeSignalReceived);
+        if (measurementwindow!=nullptr)
+        {
+            connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStarted, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStarted, Qt::UniqueConnection);
+            connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStopped, Qt::UniqueConnection);
+            connect(measurementwindow, &MeasurementWindow::request_stop_amodeTimedRecording, myAmodeTimedRecorder, &AmodeTimedRecorder::requested_stop_amodeTimedRecording, Qt::UniqueConnection);
+        }
 
         // start recording, and emit signal to indicate that we are now performing intermediate recording
         // this signal should be caught by MeasurementWindow
         myAmodeTimedRecorder->startRecording();
-        emit amodeTimedRecordingStarted(myAmodeTimedRecorder);
 
         // set the flag
         isAmodeIntermediateRecord = true;
-        ui->label_indicatorIntermRec->setStyleSheet("QLabel{background-color: green; border-radius: 12px;}");
+        ui->label_indicatorIntermRec->setStyleSheet("QLabel{background-color: green; border-radius: 5px;}");
     }
 
     // if isAmodeIntermediateRecord is now true, it means we are recording. Let's stop the record
@@ -1369,7 +1373,8 @@ void MainWindow::startIntermediateRecording()
                                       QMessageBox::Ok | QMessageBox::Cancel);
 
         // if use hit cancel, ignore everything else
-        if (reply == QMessageBox::Cancel) {
+        if (reply == QMessageBox::Cancel)
+        {
             qDebug() << "MainWindow::on_pushButton_amodeIntermediateRecord_clicked() cancelling stopping, continuing intermediate recording now.";
             return;
         }
@@ -1377,12 +1382,24 @@ void MainWindow::startIntermediateRecording()
         // stopping the recording
         myAmodeTimedRecorder->stopRecording();
 
+        // disconnect any signal
+        disconnect(myAmodeConnection, &AmodeConnection::dataReceived, myAmodeTimedRecorder, &AmodeTimedRecorder::on_amodeSignalReceived);
+        if (measurementwindow!=nullptr)
+        {
+            disconnect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStarted, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStarted);
+            disconnect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStopped);
+            connect(measurementwindow, &MeasurementWindow::request_stop_amodeTimedRecording, myAmodeTimedRecorder, &AmodeTimedRecorder::requested_stop_amodeTimedRecording);
+        }
+
+
+        // delete the object??
+        delete myAmodeTimedRecorder;
+        myAmodeTimedRecorder = nullptr;
+
         // reset the flag
         isAmodeIntermediateRecord = false;
-        ui->label_indicatorIntermRec->setStyleSheet("QLabel{background-color: green; border-radius: 12px;}");
+        ui->label_indicatorIntermRec->setStyleSheet("QLabel{background-color: rgb(200,255,200); border-radius: 5px;}");
 
-        // cleaning up will be executed by MainWindow::on_amodeTimedRecordingStopped()
-        // and this function is invoked by the a signal that is emitted in AmodeTimedRecorder::stopRecording.
     }
 }
 
@@ -1451,19 +1468,6 @@ void MainWindow::on_pushButton_amodeIntermediateRecord_clicked()
     }
 }
 */
-
-
-void MainWindow::on_amodeTimedRecordingStopped()
-{
-    // disconnect any signal
-    disconnect(myAmodeConnection, &AmodeConnection::dataReceived, myAmodeTimedRecorder, &AmodeTimedRecorder::onAmodeSignalReceived);
-    disconnect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, this, &MainWindow::on_amodeTimedRecordingStopped);
-
-    // delete the object??
-    delete myAmodeTimedRecorder;
-    myAmodeTimedRecorder = nullptr;
-    emit amodeTimedRecordingStopped();
-}
 
 
 
@@ -1567,7 +1571,7 @@ void MainWindow::openMeasurementWindow()
     if (!measurementwindow) {
 
         // Create an instance of the recording window
-        measurementwindow = new MeasurementWindow(myAmodeConnection, myMocapConnection, myAmodeTimedRecorder);
+        measurementwindow = new MeasurementWindow(myAmodeConnection, myMocapConnection, myAmodeTimedRecorder!=nullptr);
         measurementwindow->setRecordPath(path_trial_+"/"+dir_measurement_);
 
         // Connect the necessary signal to slots
@@ -1575,8 +1579,17 @@ void MainWindow::openMeasurementWindow()
         connect(this, &MainWindow::amodeDisconnected, measurementwindow, &MeasurementWindow::on_amodeDisconnected);
         connect(this, &MainWindow::mocapConnected, measurementwindow, &MeasurementWindow::on_mocapConnected);
         // connect(this, &MainWindow::mocapDisconnected, measurementwindow, &MeasurementWindow::on_mocapDisconnected);
-        connect(this, &MainWindow::amodeTimedRecordingStarted, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStarted);
-        connect(this, &MainWindow::amodeTimedRecordingStopped, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStopped);
+
+        if(myAmodeTimedRecorder!=nullptr)
+        {
+            connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStarted, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStarted, Qt::UniqueConnection);
+            connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStopped, Qt::UniqueConnection);
+            connect(measurementwindow, &MeasurementWindow::request_stop_amodeTimedRecording, myAmodeTimedRecorder, &AmodeTimedRecorder::requested_stop_amodeTimedRecording, Qt::UniqueConnection);
+        }
+
     }
     measurementwindow->show();  // Show the second window
 }
+
+
+

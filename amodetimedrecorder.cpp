@@ -41,6 +41,7 @@ void AmodeTimedRecorder::startRecording()
         isRecording = true;
         timer->start(m_timerms); // Default is triggered every 1 second
     }
+    emit amodeTimedRecordingStarted();
 }
 
 void AmodeTimedRecorder::stopRecording()
@@ -53,10 +54,15 @@ void AmodeTimedRecorder::stopRecording()
     emit amodeTimedRecordingStopped();
 }
 
-void AmodeTimedRecorder::onAmodeSignalReceived(const std::vector<uint16_t> &data)
+void AmodeTimedRecorder::on_amodeSignalReceived(const std::vector<uint16_t> &data)
 {
     // Always update currentData
     currentData = data;
+}
+
+void AmodeTimedRecorder::requested_stop_amodeTimedRecording()
+{
+    stopRecording();
 }
 
 void AmodeTimedRecorder::processData()

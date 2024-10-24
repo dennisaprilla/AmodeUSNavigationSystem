@@ -21,7 +21,8 @@ public:
     void stopRecording();
 
 public slots:
-    void onAmodeSignalReceived(const std::vector<uint16_t> &data);
+    void on_amodeSignalReceived(const std::vector<uint16_t> &data);
+    void requested_stop_amodeTimedRecording();
 
 private slots:
     void processData();
@@ -36,6 +37,7 @@ private:
     bool isRecording;
 
 signals:
+    void amodeTimedRecordingStarted();
     void amodeTimedRecordingStopped();
 };
 

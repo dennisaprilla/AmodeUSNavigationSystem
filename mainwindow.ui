@@ -402,14 +402,14 @@ li.checked::marker { content: &quot;\2612&quot;; }
                <widget class="QLabel" name="label_indicatorIntermRec">
                 <property name="minimumSize">
                  <size>
-                  <width>25</width>
+                  <width>10</width>
                   <height>0</height>
                  </size>
                 </property>
                 <property name="styleSheet">
                  <string notr="true">QLabel {
 background-color: gray; 
-border-radius: 12px;
+border-radius: 5px;
 }</string>
                 </property>
                 <property name="text">
