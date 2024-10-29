@@ -141,7 +141,7 @@ void ViconConnection::streamMarker()
             // Calculate rigidbody transformation of the current marker group
             Eigen::Isometry3d T;
             try {
-                T = estimateRigidBodyTransformation(positions);
+                T = estimateRigidBodyTransformation(positions, group);
             } catch (const std::invalid_argument& e) {
                 std::cout << "Caught exception in ViconConnection::streamMarker : " << e.what() << std::endl;
                 continue;
@@ -255,7 +255,7 @@ void ViconConnection::disconnect()
 }
 
 // Function to estimate rigid body transformation
-Eigen::Isometry3d ViconConnection::estimateRigidBodyTransformation(const Eigen::MatrixXd& points)
+Eigen::Isometry3d ViconConnection::estimateRigidBodyTransformation(const Eigen::MatrixXd& points, std::string group)
 {
     // Check that the input matrix has at least 3 points (N >= 3)
     if (points.cols() < 3) {
@@ -291,11 +291,53 @@ Eigen::Isometry3d ViconConnection::estimateRigidBodyTransformation(const Eigen::
     Eigen::Vector3d v3 = v1.cross(v2_orthogonal);
     v3.normalize(); // Normalize V3
 
+    // Additonal step for some very special cases for ref and probe rigid bodies.
+    // I have made all of our marker arrangement for amode holder have a similar structure.
+    //
+    // Viewed from the bird eye view:
+    // 1. Origin is always bottom left
+    // 2. x is always to the right of origin AND asummed to be the reference axis that can't be skewed
+    // 3. y is always to the top of the origin and can be skewed, as i can make adjustment of the
+    //    skewedness direction of y to be perpendicular to the x-axis
+    // I have made marker definition in Vicon for rigid body as p1=origin, p2=x, p3=y.
+    //
+    // However, xyz direction of that is used by fCal for ref/probe rigid body is different.
+    // Viewed from the bird eye view:
+    // 1. Origin is always at the bottom
+    // 2. z is always to the top AND asummed to be the reference axis that can't be skewed.\
+    // 3. y is always to the right of the origin and can be skewed.
+    //
+    // See this diagram below for detail:
+    //   o (p2)         o (p3)
+    // ^ | o (p3)     ^ |
+    // | |/           | |(p1)
+    // z o (p1)       y o---o(p2)
+    //   y-->           x-->
+    // (ref/probe)    (amode holders)
+    //
+    // So, what i will do, when this function is called from markers from ref/probe rigid body,
+    // i will pretend their z-direction marker as first vector, and their y-direction as second vector.
+    // But i need to remember that later i need to swap the vector when i want to pack them into matrix.
+    //
+    // With important note. I need to negate the resulting third vector, because if (viewed from bird eye view)
+    // first vector is pointed upward, and second vector is pointed to the right, then the resulting
+    // third vector will be pointed away from the view (as the result of the right-hand rule cross product).
+    // Fcal needs to have the third vector to be pointed to the view. So i need to negate the third vector.
+
     // Step 6: Construct the rotation matrix from the orthonormal vectors
     Eigen::Matrix3d rotation;
-    rotation.col(0) = v1;
-    rotation.col(1) = v2_orthogonal;
-    rotation.col(2) = v3;
+    if(group==transformationID_probe || group==transformationID_ref)
+    {
+        rotation.col(0) = -v3;
+        rotation.col(1) = v2_orthogonal;
+        rotation.col(2) = v1;
+    }
+    else
+    {
+        rotation.col(0) = v1;
+        rotation.col(1) = v2_orthogonal;
+        rotation.col(2) = v3;
+    }
 
     // Step 7a: Apply SVD to ensure the matrix is orthogonal
     Eigen::JacobiSVD<Eigen::Matrix3d> svd(rotation, Eigen::ComputeFullU | Eigen::ComputeFullV);

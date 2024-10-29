@@ -69,7 +69,7 @@ private:
     /**
      * @brief To estimate rigid body transformation
      */
-    Eigen::Isometry3d estimateRigidBodyTransformation(const Eigen::MatrixXd& points);
+    Eigen::Isometry3d estimateRigidBodyTransformation(const Eigen::MatrixXd& points, std::string group);
 
     /**
      * @brief Checks the validity of the markers name and extract the group name from it
@@ -84,6 +84,9 @@ private:
 
     QualisysTransformationManager tmanager;     //!< manage the rigid body transformation tracked by qualisys
     bool isStreamRigidBody = false;             //!< flag for what kind of data you want to stream, true=rigidbodies, false=markers;
+
+    std::string transformationID_probe = "B_N_PRB";
+    std::string transformationID_ref = "B_N_REF";
 
 public slots:
     // Slot to perform the actual streaming
