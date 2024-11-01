@@ -40,7 +40,7 @@ ViconConnection::~ViconConnection()
     disconnect();
 }
 
-void ViconConnection::setDataStream(QString datatype)
+void ViconConnection::setDataStream(QString datatype, bool useForce)
 {
     if (QString::compare(datatype, "rigidbody")==0) {
         isStreamRigidBody = true;
@@ -49,9 +49,13 @@ void ViconConnection::setDataStream(QString datatype)
         isStreamRigidBody = false;
     }
     else {
-        std::cout << "ViconConnection::setDataStream | datatype unrecognized, use rigidbody as default instead";
+        qDebug() << "ViconConnection::setDataStream() datatype unrecognized, use rigidbody as default instead";
         isStreamRigidBody = true;
     }
+
+    // set the flag for streaming force plate
+    isStreamForce = useForce;
+    qDebug() << "ViconConnection::setDataStream() force plate analog data is set to true";
 }
 
 // Call this to start the thread and begin streaming
@@ -66,19 +70,28 @@ void ViconConnection::run()
 {
     while (streamingThread.isRunning())
     {
+        // Get a frame from the Vicon system
+        if (ViconClient.GetFrame().Result != ViconDataStreamSDK::CPP::Result::Success)
+        {
+            std::cout << "Failed to get frame from Vicon." << std::endl;
+            continue;
+        }
+
         if (isStreamRigidBody) streamRigidBody();
         else streamMarker();
+
+        if(isStreamForce) streamForce();
     }
 }
 
 void ViconConnection::streamMarker()
 {
-    // Get a frame from the Vicon system
-    if (ViconClient.GetFrame().Result != ViconDataStreamSDK::CPP::Result::Success)
-    {
-        std::cout << "Failed to get frame from Vicon." << std::endl;
-        return;
-    }
+    // // Get a frame from the Vicon system
+    // if (ViconClient.GetFrame().Result != ViconDataStreamSDK::CPP::Result::Success)
+    // {
+    //     std::cout << "Failed to get frame from Vicon." << std::endl;
+    //     return;
+    // }
 
     // clear the transformation manager
     tmanager.clearTransformations();
@@ -170,12 +183,12 @@ void ViconConnection::streamMarker()
 // Streaming function
 void ViconConnection::streamRigidBody()
 {
-    // Get a frame from the Vicon system
-    if (ViconClient.GetFrame().Result != ViconDataStreamSDK::CPP::Result::Success)
-    {
-        std::cout << "Failed to get frame from Vicon." << std::endl;
-        return;
-    }
+    // // Get a frame from the Vicon system
+    // if (ViconClient.GetFrame().Result != ViconDataStreamSDK::CPP::Result::Success)
+    // {
+    //     std::cout << "Failed to get frame from Vicon." << std::endl;
+    //     return;
+    // }
 
     // clear the transformation manager
     tmanager.clearTransformations();
@@ -244,6 +257,43 @@ void ViconConnection::streamRigidBody()
 
     // Once the task is finished, emit the signal
     emit dataReceived(tmanager);
+}
+
+void ViconConnection::streamForce()
+{
+    // Output the force plate information.
+    unsigned int ForcePlateCount = ViconClient.GetForcePlateCount().ForcePlateCount;
+
+    // Check if there any force plate detected in Vicon system
+    if (ForcePlateCount==0) return;
+
+    // Here, i only want to use the first force plate. Because i am not using the force plate as
+    // for analysis, but only for media for synchronization
+    unsigned int ForcePlateSubsamples = ViconClient.GetForcePlateSubsamples( 0 ).ForcePlateSubsamples;
+
+    // Create an Nx3 matrix to store 3D vectors
+    Eigen::MatrixXd vectors(ForcePlateSubsamples, 3);
+
+    // Loop for all of the subsamples
+    for( unsigned int ForcePlateSubsample = 0; ForcePlateSubsample < ForcePlateSubsamples; ++ForcePlateSubsample )
+    {
+
+        // Get the force vector
+        ViconDataStreamSDK::CPP::Output_GetGlobalForceVector _Output_GetForceVector =
+            ViconClient.GetGlobalForceVector( 0, ForcePlateSubsample );
+
+        // Store the force vector
+        vectors.row(ForcePlateSubsample) << _Output_GetForceVector.ForceVector[0], _Output_GetForceVector.ForceVector[1], _Output_GetForceVector.ForceVector[2];
+    }
+
+    // Resize or initialize the magnitudes vector based on N
+    fmagnitudes.resize(ForcePlateSubsamples);
+
+    // Calculate and store magnitudes
+    fmagnitudes = vectors.rowwise().norm();
+
+    // Emit the signal that pass the fmagnitudes
+    emit forceReceived(fmagnitudes);
 }
 
 // Disconnect the client

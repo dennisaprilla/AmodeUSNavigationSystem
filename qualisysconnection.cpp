@@ -108,6 +108,12 @@ int QualisysConnection::startStreamFrames()
     return 1;
 }
 
+void QualisysConnection::setDataStream(QString datatype, bool useForce)
+{
+    // i will leave this empty. It is just a "placeholder" because ViconConnection has this function
+    // Future Dennis, or somebody else might want to implement this.
+}
+
 void QualisysConnection::receiveData() {
     // variable to capture packettype (error/packetdata/end)
     CRTPacket::EPacketType ePacketType;
