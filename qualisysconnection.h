@@ -79,6 +79,16 @@ public:
      */
     void stopStreaming();
 
+    /**
+     * @brief To set what datatype to stream, rigidbody or marker.
+     * To be honest, this function is made because i want to make the abstraction class MocapConnection has
+     * this function implemented, so that i can call this function throught he object of MocapConnection class
+     * in the mainwindow. ViconConnection class has this function, so QualisysConnection should also.
+     * I should have implement this function, but i am too lazy. Beacuse it means that i need to make
+     * QualisysConnection to be able to choose between streaming marker and rigid body. Nah, later..
+     */
+    void setDataStream(QString datatype, bool useForce) override;
+
 protected:
     /**
      * @brief Initializing connection to Qualisys, called in constructor.
@@ -133,6 +143,15 @@ private:
     std::vector<std::string> rigidbodyName_;    //!< Contains list of rigidbody names.
     std::vector<double> rigidbodyData_;         //!< Contains value of rigidbodies.
     QualisysTransformationManager tmanager;     //!< manage the rigid body transformation tracked by qualisys
+
+    // This three variables are only for the sake of symmetry with ViconConnection.
+    // In that class i can choose between streaming rigid body or marker or even the force plate.
+    // I should have implement those things too here for Qualisys, but i am too lazy now.
+    // Future Dennis, or somebody else, please...
+    Eigen::VectorXd fmagnitudes;                //!< store the force plate data
+    bool isStreamRigidBody = false;             //!< flag for what kind of data you want to stream, true=rigidbodies, false=markers;
+    bool isStreamForce     = false;             //!< flag if you want to include force data streaming from force plate
+
     QTimer *timer;                              //!< A timer, in which we check the data from Qualisys
 
     // variables that handles multithreading for streaming qualisys data

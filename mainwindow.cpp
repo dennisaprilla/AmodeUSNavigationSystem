@@ -499,18 +499,21 @@ void MainWindow::on_pushButton_bmode2d3d_clicked()
             {
                 std::string viconHostname = qualisys_ipstr + ":" + std::to_string(qualisys_portushort);
                 myMocapConnection = new ViconConnection(nullptr, viconHostname);
-                // myMocapConnection->setDataStream("marker");
+                myMocapConnection->setDataStream("marker", false);
                 myMocapConnection->startStreaming();
             }
             // if the current combobox index is one, it means qualisys is selected
             else
             {
                 myMocapConnection = new QualisysConnection(nullptr, qualisys_ipstr, qualisys_portushort);
+                myMocapConnection->setDataStream("rigidbody", false);
                 myMocapConnection->startStreaming();
-                // connect(myMocapConnection, &QualisysConnection::dataReceived, this, &MainWindow::updateQualisysText);
             }
 
-            // emit a signal, telling mocap is connected
+            // Show the rigid body text to the log
+            // connect(myMocapConnection, &MocapConnection::dataReceived, this, &MainWindow::updateQualisysText);
+
+            // Emit a signal, telling mocap is connected. Will be caught by measuremntwindow
             emit mocapConnected(myMocapConnection);
 
             // Only intantiate Bmode3DVisualizer after myMocapConnection is instantiated (and connected)

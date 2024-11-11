@@ -42,7 +42,7 @@ public:
     void startStreaming() override;
 
     // Funciton to set data stream
-    void setDataStream(QString datatype);
+    void setDataStream(QString datatype, bool useForce) override;
 
 private:
     /**
@@ -60,9 +60,11 @@ private:
      */
     void streamRigidBody();
     void streamMarker();
+    void streamForce();
 
     /**
-     * @brief Disconnects the client
+     * @brief Disconnects the client.
+     * To be honest, i should name this stopStreaming() so that it is similar to QualisysConnection.
      */
     void disconnect();
 
@@ -83,10 +85,13 @@ private:
 
 
     QualisysTransformationManager tmanager;     //!< manage the rigid body transformation tracked by qualisys
-    bool isStreamRigidBody = false;             //!< flag for what kind of data you want to stream, true=rigidbodies, false=markers;
+    Eigen::VectorXd fmagnitudes;                //!< store the force plate data
 
-    std::string transformationID_probe = "B_N_PRB";
-    std::string transformationID_ref = "B_N_REF";
+    bool isStreamRigidBody = false;             //!< flag for what kind of data you want to stream, true=rigidbodies, false=markers;
+    bool isStreamForce     = false;             //!< flag if you want to include force data streaming from force plate
+
+    std::string transformationID_probe = "B_N_PRB"; //!< When i want to calculate the basis vector from markers, B-mode probe reigid bodiy has specific arangement, this variable is to check that condition
+    std::string transformationID_ref = "B_N_REF";   //!< Similar to transformationID_probe
 
 public slots:
     // Slot to perform the actual streaming

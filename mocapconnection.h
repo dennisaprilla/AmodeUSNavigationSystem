@@ -35,11 +35,21 @@ public:
      */
     virtual void startStreaming() = 0;
 
+    /**
+     * @brief A virtual function such that setDataStream() can be used across two child class ViconConnection and QualisysConnection
+     */
+    virtual void setDataStream(QString datatype, bool useForce) = 0;
+
 signals:
     /**
-     * @brief Emits a tmanager, which consists of transformations of rigid body that is detected by Qualisys
+     * @brief Emits a tmanager, which consists of transformations of rigid body that is detected by Qualisys/Vicon
      */
     void dataReceived(const QualisysTransformationManager &tmanager);
+
+    /**
+     * @brief Emits force magnitudes, which consists of magnitude of a force plate (#0) that is detected by Qualisys/Vicon
+     */
+    void forceReceived(const Eigen::MatrixXd &fmagnitudes);
 
 };
 
