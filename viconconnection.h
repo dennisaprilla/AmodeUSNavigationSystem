@@ -44,6 +44,13 @@ public:
     // Funciton to set data stream
     void setDataStream(QString datatype, bool useForce) override;
 
+    /**
+     * @brief A get function of the current transformation.
+     *
+     * @return An object of QualisysTransformationManager which stores the current transformation.
+     */
+    const QualisysTransformationManager& getTManager() const override;
+
 private:
     /**
      * @brief Client object to interact with the Vicon system

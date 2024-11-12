@@ -446,3 +446,7 @@ void ViconConnection::groupMarkerObjectByGroup(const std::vector<MarkerObject>& 
         groupedPositions[group] = groupMatrix;
     }
 }
+
+const QualisysTransformationManager& ViconConnection::getTManager() const {
+    return tmanager;
+}

@@ -57,6 +57,7 @@ private slots:
     void on_pushButton_amodeConfig_clicked();
     void on_comboBox_amodeNumber_textActivated(const QString &arg1);
     void on_pushButton_amodeWindow_clicked();
+    void on_pushButton_amodeSnapshot_clicked();
     // void on_pushButton_amodeIntermediateRecord_clicked();
 
     void on_pushButton_volumeLoad_clicked();
@@ -133,8 +134,13 @@ private:
     const QString dir_bonescan_     = "bonescan";
     const QString dir_intermediate_ = "intermediate";
     const QString dir_measurement_  = "measurement";
+    const QString dir_snapshot_     = "snapshot";
     QString dir_trial_              = "";
     QString path_trial_             = "";
+    QString path_bonescan_          = "";
+    QString path_intermediate_      = "";
+    QString path_measurement_       = "";
+    QString path_snapshot_          = "";
 
 signals:
     void amodeConnected(AmodeConnection *amodeConnection);

@@ -177,7 +177,11 @@ bool MainWindow::initNewTrial()
         return false;
 
     // initialize our path to trial
-    path_trial_ = path_root_ + "/" + dir_trial_;
+    path_trial_        = path_root_ + "/" + dir_trial_;
+    path_bonescan_     = path_trial_ + "/" +  dir_bonescan_;
+    path_intermediate_ = path_trial_ + "/" +  dir_intermediate_;
+    path_measurement_  = path_trial_ + "/" +  dir_measurement_;
+    path_snapshot_     = path_trial_ + "/" +  dir_snapshot_;
 
     // initialize some QLineEdit, to make things easier for the user
     ui->lineEdit_mhaPath->setText(path_trial_+"/");
@@ -256,7 +260,7 @@ QString MainWindow::createNewTrialFolder(const QString &directoryPath, const QSt
     QDir newDir(newFolderPath);
 
     // Create subfolders
-    QStringList subFolders = {dir_bonescan_, dir_intermediate_, dir_measurement_};
+    QStringList subFolders = {dir_bonescan_, dir_intermediate_, dir_measurement_, dir_snapshot_};
     for (const QString &subFolder : subFolders)
     {
         if (!newDir.mkdir(subFolder)) return "";
@@ -1330,6 +1334,162 @@ void MainWindow::on_pushButton_amodeWindow_clicked()
     }
 }
 
+
+void MainWindow::on_pushButton_amodeSnapshot_clicked()
+{
+    if(myAmodeConnection==nullptr)
+    {
+        QMessageBox::warning(this, "Can't snapshot the signal data", "Please connect both the ultrasound system first.");
+        return;
+    }
+
+    if(myAmodeConfig==nullptr)
+    {
+        QMessageBox::warning(this, "Can't snapshot the signal data", "A-mode configuration is yet to be loaded.");
+        return;
+    }
+
+    // ==========================================================
+    // Handle setting up ultrasound image snapshot
+    // ==========================================================
+
+    // Get the US Data
+    const auto& current_usdata_uint16 = myAmodeConnection->getUSData();
+
+    // Check the size of the ultrasound data to determine reshaping parameters.
+    // We expect the data to be reshaped into an image format, with a fixed height of 30.
+    int height = 30;
+    int width = current_usdata_uint16.size() / height;
+    if (current_usdata_uint16.size() % height != 0)
+    {
+        QMessageBox::critical(this, "Can't snapshot the signal data", "Data size is not divisible by the height. Cannot reshape.");
+        qWarning() << "MainWindow::on_pushButton_amodeSnapshot_clicked() ultrasound data that is received is not well shaped";
+        return;
+    }
+
+    // Create an OpenCV matrix (cv::Mat) from the ultrasound data. This matrix represents the ultrasound image.
+    cv::Mat amodeImage(height, width, CV_16UC1, const_cast<uint16_t*>(current_usdata_uint16.data()));
+
+    // Get the current selected group
+    std::vector<AmodeConfig::Data> amode_group = myAmodeConfig->getDataByGroupName(ui->comboBox_amodeNumber->currentText().toStdString());
+    // Get the probe index start and end. We wil only take a snapshot of this group, not the whole thing.
+    int probeidx_start = amode_group.at(0).number-1;
+    int probeidx_end   = amode_group.at(amode_group.size()-1).number-1;
+
+    // Get the subimage based from the start and end index
+    cv::Mat amodeImage_currentGroup;
+    if (probeidx_start == probeidx_end) {
+        // If probeidx_start == probeidx_end, extract a single row
+        amodeImage_currentGroup = amodeImage.row(probeidx_start);
+    } else {
+        // Otherwise, extract a range of rows from N to M
+        amodeImage_currentGroup = amodeImage.rowRange(cv::Range(probeidx_start, probeidx_end + 1)); // M + 1 to include row M
+    }
+
+    // ==========================================================
+    // Handle ultrasound image writing
+    // ==========================================================
+
+    // Get the current timestamp in milliseconds since epoch for logging and file naming purposes.
+    qint64 timestamp_currentEpochMillis = QDateTime::currentMSecsSinceEpoch();
+    QString timestamp_currentEpochMillis_str = QString::number(timestamp_currentEpochMillis);
+
+    // Generate the filename for the ultrasound image using the current timestamp to make it unique.
+    QString filePostfix = ui->comboBox_amodeNumber->currentText();
+    QString imageFilename = timestamp_currentEpochMillis_str + "_AmodeRecording_" + filePostfix + ".tiff";
+    QString imageFilepath_filename = path_snapshot_ + "/" + imageFilename;
+
+    // If the save operation fails, output a warning message.
+    if (!cv::imwrite(imageFilepath_filename.toStdString(), amodeImage_currentGroup))
+    {
+        QMessageBox::critical(this, "Can't snapshot the signal data", "Something went wrong when saving the ultrasound snapshot data");
+        qWarning() << "MainWindow::on_pushButton_amodeSnapshot_clicked() Can't write the amodeImage_currentGroup";
+        return;
+    }
+
+
+    // ==========================================================
+    // Handle setting up rigid body snapshot
+    // ==========================================================
+
+    // check if the user already connected with the motion capture system
+    if(myMocapConnection==nullptr)
+    {
+        QMessageBox::warning(this, "Can't snapshot rigid body data", "Connection to motion capture system is yet to be established. Ignoring the rigid body data");
+        return;
+    }
+
+    // get the all transformation matrix of the marker in global coordinate
+    const auto& tManager = myMocapConnection->getTManager();
+    // get the transformation of the current active probe that is selected by the user
+    QString rigidbody_name = ui->comboBox_amodeNumber->currentText();
+    Eigen::Isometry3d global_T_matrix = tManager.getTransformationById(rigidbody_name.toStdString());
+    // convert to quaternion (more effective when writing it to a file)
+    Eigen::Quaterniond global_Q(global_T_matrix.rotation());
+    Eigen::Vector3d global_t = global_T_matrix.translation();
+
+    // prepare a variable to store all the local matrices
+    std::vector<Eigen::Quaterniond> local_Qs;
+    std::vector<Eigen::Vector3d> local_ts;
+    // for every element inside the group
+    for (int i = 0; i < static_cast<int>(amode_group.size()); i++)
+    {
+        // get the rotation euler angle
+        std::vector<double> local_R = amode_group.at(i).local_R;
+        // convert to rotation matrix
+        Eigen::Quaterniond local_Q =
+            (Eigen::AngleAxisd(local_R.at(0) * M_PI / 180.0, Eigen::Vector3d::UnitZ()) * // Z rotation
+             Eigen::AngleAxisd(local_R.at(1) * M_PI / 180.0, Eigen::Vector3d::UnitY()) * // Y rotation
+             Eigen::AngleAxisd(local_R.at(2) * M_PI / 180.0, Eigen::Vector3d::UnitX()));  // X rotation
+
+        // get the translation
+        std::vector<double> tmp = amode_group.at(i).local_t;
+        Eigen::Vector3d local_t(tmp[0], tmp[1], tmp[2]);
+
+        // Create an Eigen::Isometry3d transformation
+        local_Qs.push_back(local_Q);
+        local_ts.push_back(local_t);
+    }
+
+    // ==========================================================
+    // Handle rigid body snapshot writing
+    // ==========================================================
+
+    QString rigidbodyFilename = timestamp_currentEpochMillis_str + "_MocapRecording.csv";
+    QString rigidbodyFilepath_filename = path_snapshot_ + "/" + rigidbodyFilename;
+
+    // Open the file
+    QFile file(rigidbodyFilepath_filename);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::critical(this, "Can't snapshot rigid body data", "Could not open file to store rigid body data. Ignoring the rigid body data");
+        qWarning() << "MainWindow::on_pushButton_amodeSnapshot_clicked() Error: Could not open file" << rigidbodyFilepath_filename;
+        return;
+    }
+
+    // Use QTextStream to write to the file
+    QTextStream out(&file);
+    // Write the CSV header
+    out << "name,q1,q2,q3,q4,t1,t2,t3\n";
+
+    // First row in the csv reserved for global coordinate
+    out << rigidbody_name << ","                                                                    // Name
+        << global_Q.x() << "," << global_Q.y() << "," << global_Q.z() << "," << global_Q.w() << "," // Quaternion components
+        << global_t.x() << "," << global_t.y() << "," << global_t.z() << "\n";                      // Translation components
+
+    // Iterate through each local transformation
+    for (int i = 0; i < static_cast<int>(amode_group.size()); i++)
+    {
+        // Convert name to QString and write data to the file in CSV format
+        out << "Probe_"+QString::number(amode_group.at(0).number) << ","                                                        // Name
+            << local_Qs.at(i).x() << "," << local_Qs.at(i).y() << "," << local_Qs.at(i).z() << "," << local_Qs.at(i).w() << "," // Quaternion components
+            << local_ts.at(i).x() << "," << local_ts.at(i).y() << "," << local_ts.at(i).z() << "\n";                            // Translation components
+    }
+
+    // Close the file
+    file.close();
+    qDebug() << "MainWindow::on_pushButton_amodeSnapshot_clicked() Data written to" << rigidbodyFilepath_filename << "successfully.";
+}
+
 void MainWindow::startIntermediateRecording()
 {
     if(myAmodeConnection==nullptr)
@@ -1593,6 +1753,8 @@ void MainWindow::openMeasurementWindow()
     }
     measurementwindow->show();  // Show the second window
 }
+
+
 
 
 

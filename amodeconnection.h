@@ -88,11 +88,17 @@ public:
      */
     int getNsample();
 
-
     /**
      * @brief A function to get how many probe used by the machine.
      */
     int getNprobe();
+
+
+    /**
+     * @brief A function to get the US data at this moment.
+     */
+    const std::vector<uint16_t>& getUSData() const;
+
 
     void letsdelete();
 
