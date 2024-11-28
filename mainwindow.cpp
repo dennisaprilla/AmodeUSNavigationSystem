@@ -1356,6 +1356,13 @@ void MainWindow::on_pushButton_amodeSnapshot_clicked()
     // Get the US Data
     const auto& current_usdata_uint16 = myAmodeConnection->getUSData();
 
+    // Check if the ultrasound data is empty
+    if (current_usdata_uint16.empty())
+    {
+        QMessageBox::critical(this, "Can't snapshot the signal data", "Ultrasound data is empty.");
+        return;
+    }
+
     // Check the size of the ultrasound data to determine reshaping parameters.
     // We expect the data to be reshaped into an image format, with a fixed height of 30.
     int height = 30;
@@ -1368,11 +1375,14 @@ void MainWindow::on_pushButton_amodeSnapshot_clicked()
     }
 
     // Create an OpenCV matrix (cv::Mat) from the ultrasound data. This matrix represents the ultrasound image.
-    cv::Mat amodeImage(height, width, CV_16UC1, const_cast<uint16_t*>(current_usdata_uint16.data()));
+    // cv::Mat amodeImage(height, width, CV_16UC1, const_cast<uint16_t*>(current_usdata_uint16.data()));
+    cv::Mat amodeImage(height, width, CV_16UC1);
+    memcpy(amodeImage.data, current_usdata_uint16.data(), current_usdata_uint16.size() * sizeof(uint16_t));
 
     // Get the current selected group
     std::vector<AmodeConfig::Data> amode_group = myAmodeConfig->getDataByGroupName(ui->comboBox_amodeNumber->currentText().toStdString());
-    // Get the probe index start and end. We wil only take a snapshot of this group, not the whole thing.
+    // Get the probe index start and end. We wil only take a snapshot of this group, not the whole amode sensor that is working now.
+    // The code below is assuming that the amode_group is sorted
     int probeidx_start = amode_group.at(0).number-1;
     int probeidx_end   = amode_group.at(amode_group.size()-1).number-1;
 
@@ -1436,11 +1446,11 @@ void MainWindow::on_pushButton_amodeSnapshot_clicked()
     {
         // get the rotation euler angle
         std::vector<double> local_R = amode_group.at(i).local_R;
-        // convert to rotation matrix
+        // convert to rotation matrix (ZYX order, read from the right)
         Eigen::Quaterniond local_Q =
-            (Eigen::AngleAxisd(local_R.at(0) * M_PI / 180.0, Eigen::Vector3d::UnitZ()) * // Z rotation
-             Eigen::AngleAxisd(local_R.at(1) * M_PI / 180.0, Eigen::Vector3d::UnitY()) * // Y rotation
-             Eigen::AngleAxisd(local_R.at(2) * M_PI / 180.0, Eigen::Vector3d::UnitX()));  // X rotation
+            (Eigen::AngleAxisd(local_R.at(0) * M_PI / 180.0, Eigen::Vector3d::UnitX()) *
+             Eigen::AngleAxisd(local_R.at(1) * M_PI / 180.0, Eigen::Vector3d::UnitY()) *
+             Eigen::AngleAxisd(local_R.at(2) * M_PI / 180.0, Eigen::Vector3d::UnitZ()));
 
         // get the translation
         std::vector<double> tmp = amode_group.at(i).local_t;
@@ -1458,35 +1468,46 @@ void MainWindow::on_pushButton_amodeSnapshot_clicked()
     QString rigidbodyFilename = timestamp_currentEpochMillis_str + "_MocapRecording.csv";
     QString rigidbodyFilepath_filename = path_snapshot_ + "/" + rigidbodyFilename;
 
-    // Open the file
-    QFile file(rigidbodyFilepath_filename);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        QMessageBox::critical(this, "Can't snapshot rigid body data", "Could not open file to store rigid body data. Ignoring the rigid body data");
-        qWarning() << "MainWindow::on_pushButton_amodeSnapshot_clicked() Error: Could not open file" << rigidbodyFilepath_filename;
+    // better use try and catch for file operation
+    try
+    {
+        // Open the file
+        QFile file(rigidbodyFilepath_filename);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QMessageBox::critical(this, "Can't snapshot rigid body data", "Could not open file to store rigid body data. Ignoring the rigid body data");
+            qWarning() << "MainWindow::on_pushButton_amodeSnapshot_clicked() Error: Could not open file" << rigidbodyFilepath_filename;
+            return;
+        }
+
+        // Use QTextStream to write to the file
+        QTextStream out(&file);
+        // Write the CSV header
+        out << "name,q1,q2,q3,q4,t1,t2,t3\n";
+
+        // First row in the csv reserved for global coordinate
+        out << rigidbody_name << ","                                                                    // Name
+            << global_Q.x() << "," << global_Q.y() << "," << global_Q.z() << "," << global_Q.w() << "," // Quaternion components
+            << global_t.x() << "," << global_t.y() << "," << global_t.z() << "\n";                      // Translation components
+
+        // Iterate through each local transformation
+        for (int i = 0; i < static_cast<int>(amode_group.size()); i++)
+        {
+            // Convert name to QString and write data to the file in CSV format
+            out << "Probe_"+QString::number(amode_group.at(i).number) << ","                                                        // Name
+                << local_Qs.at(i).x() << "," << local_Qs.at(i).y() << "," << local_Qs.at(i).z() << "," << local_Qs.at(i).w() << "," // Quaternion components
+                << local_ts.at(i).x() << "," << local_ts.at(i).y() << "," << local_ts.at(i).z() << "\n";                            // Translation components
+        }
+
+        // Close the file
+        file.close();
+
+    }
+    catch (const std::exception& e)
+    {
+        QMessageBox::critical(this, "File Error", QString("An error occurred: %1").arg(e.what()));
         return;
     }
 
-    // Use QTextStream to write to the file
-    QTextStream out(&file);
-    // Write the CSV header
-    out << "name,q1,q2,q3,q4,t1,t2,t3\n";
-
-    // First row in the csv reserved for global coordinate
-    out << rigidbody_name << ","                                                                    // Name
-        << global_Q.x() << "," << global_Q.y() << "," << global_Q.z() << "," << global_Q.w() << "," // Quaternion components
-        << global_t.x() << "," << global_t.y() << "," << global_t.z() << "\n";                      // Translation components
-
-    // Iterate through each local transformation
-    for (int i = 0; i < static_cast<int>(amode_group.size()); i++)
-    {
-        // Convert name to QString and write data to the file in CSV format
-        out << "Probe_"+QString::number(amode_group.at(0).number) << ","                                                        // Name
-            << local_Qs.at(i).x() << "," << local_Qs.at(i).y() << "," << local_Qs.at(i).z() << "," << local_Qs.at(i).w() << "," // Quaternion components
-            << local_ts.at(i).x() << "," << local_ts.at(i).y() << "," << local_ts.at(i).z() << "\n";                            // Translation components
-    }
-
-    // Close the file
-    file.close();
     qDebug() << "MainWindow::on_pushButton_amodeSnapshot_clicked() Data written to" << rigidbodyFilepath_filename << "successfully.";
 }
 
