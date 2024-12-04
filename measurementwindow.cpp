@@ -185,8 +185,6 @@ void MeasurementWindow::on_pushButton_recordButton_clicked()
         // change the button text
         ui->pushButton_recordButton->setText("Record");
         ui->pushButton_recordButton->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::MediaRecord));
-        // reset the flag
-        isMeasurementRecording = false;
 
         // Create a numbered folder for the next recording
         QString tmp = createNumberedFolder(record_parentpath_);
@@ -202,6 +200,12 @@ void MeasurementWindow::on_pushButton_recordButton_clicked()
 
         // give information to user that it finished recording
         QMessageBox::information(this, "Finsihed recording", "Recording is finished. Check measurement folder.");
+
+        // signals the mainwindow that it can start the timed recording (if later the user confirm it)
+        emit request_start_amodeTimedRecording();
+
+        // reset the flag
+        isMeasurementRecording = false;
     }
 
 }

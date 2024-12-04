@@ -42,12 +42,18 @@ public:
      */
     void setFilePostfix(const QString &filePostfix);
 
+    // /**
+    //  * @brief Sets the path where the recorded files will be saved.
+    //  * If no path is set, the default path "D:/" will be used.
+    //  * @param filePath The file path for saving recorded files.
+    //  */
+    // void setFilePath(const QString &filePath);
+
     /**
-     * @brief Sets the path where the recorded files will be saved.
-     * If no path is set, the default path "D:/" will be used.
-     * @param filePath The file path for saving recorded files.
+     * @brief Sets the parent path where the timed-recording will be grouped into numbered folders
+     * @param filePath The file parent path for saving recorded files.
      */
-    void setFilePath(const QString &filePath);
+    void setFileParentPath(const QString &fileParentPath);
 
     /**
      * @brief Sets the interval for recording in milliseconds.
@@ -67,6 +73,11 @@ public:
      * Stops the timer, halts recording, and emits a signal to notify other classes.
      */
     void stopRecording();
+
+    /**
+     * @brief Returns true if the class is currently recording
+     */
+    bool isCurrentlyRecording();
 
 public slots:
     /**
@@ -90,13 +101,24 @@ private slots:
     void processData();
 
 private:
-    QString m_filePath;                 //!< The path where the recorded files will be saved.
+    // QString m_filePath;                 //!< The path where the timed-recorded files will be saved.
+    QString m_fileCurrentPath;          //!< The path where the current numbered timed-recorded files will be saved.
+    QString m_fileParentPath;           //!< The parent path where the timed-recorded files will be grouped into numbered folders.
     QString m_filePostfix;              //!< The postfix added to recorded file names to distinguish them.
     int m_timerms;                      //!< The interval in milliseconds for recording data.
 
     QTimer *timer;                      //!< Timer to trigger the data processing at specified intervals.
     std::vector<uint16_t> currentData;  //!< Stores the latest received ultrasound data.
     bool isRecording;                   //!< Indicates whether the recording process is currently active.
+
+    /**
+     * @brief Creates a new numbered folder in the given path starting from zero if no folders exist.
+     *
+     * @param basePath The base directory path where the numbered folder will be created.
+     * @return QString The full path of the created folder (e.g., "D:/path/to/base/0000"), or an empty string if an error occurred.
+     */
+    QString createNumberedFolder(const QString& basePath);
+
 
 signals:
     /**

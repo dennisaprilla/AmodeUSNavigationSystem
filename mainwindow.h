@@ -42,9 +42,15 @@ public slots:
     void disconnectUSsignal();
     void updateQualisysText(const QualisysTransformationManager &tmanager);
 
+    // functions for cmd calling
     void volumeReconstructorCmdFinished();
     void volumeReconstructorCmdStandardOutput();
     void volumeReconstructorCmdStandardError();
+
+    // functions for intermediate recording
+    void startIntermediateRecording();
+    void stopIntermediateRecording();
+    void restartIntermediateRecording();
 
 private slots:
     // void on_pushButton_startCamera_clicked();
@@ -86,8 +92,6 @@ private:
     void slotConnect_Amode();
     void slotDisconnect_Amode();
 
-    // other functions
-    void startIntermediateRecording();
 
     Ui::MainWindow *ui;
 

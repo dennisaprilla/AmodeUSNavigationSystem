@@ -20,7 +20,6 @@ public:
     ~MeasurementWindow();
 
     void setRecordParentPath(const QString &path);
-    QString createNumberedFolder(const QString& basePath);
 
 public slots:
     void on_amodeConnected(AmodeConnection *amodeConnection);
@@ -47,8 +46,17 @@ private:
     QString record_parentpath_  = "";
     QString record_currentpath_ = "";
 
+    /**
+     * @brief Creates a new numbered folder in the given path starting from zero if no folders exist.
+     *
+     * @param basePath The base directory path where the numbered folder will be created.
+     * @return QString The full path of the created folder (e.g., "D:/path/to/base/0000"), or an empty string if an error occurred.
+     */
+    QString createNumberedFolder(const QString& basePath);
+
 signals:
     void request_stop_amodeTimedRecording();
+    void request_start_amodeTimedRecording();
 };
 
 #endif // MEASUREMENTWINDOW_H
