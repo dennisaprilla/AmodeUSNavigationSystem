@@ -337,6 +337,10 @@ int AmodeConnection::getNprobe()
     return probes_;
 }
 
+const std::vector<uint16_t>& AmodeConnection::getUSData() const {
+    return usdata_uint16_;
+}
+
 
 
 

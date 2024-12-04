@@ -294,7 +294,7 @@ void QualisysConnection::streamData()
 }
 
 
-QualisysTransformationManager QualisysConnection::getTManager(){
+const QualisysTransformationManager& QualisysConnection::getTManager() const {
     return tmanager;
 }
 

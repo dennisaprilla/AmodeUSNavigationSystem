@@ -94,7 +94,7 @@ public:
     /**
      * @brief To export dataWindow to a csv file in the directory provided by filename_
      */
-    bool exportWindow();
+    bool exportWindow(const std::string& newfilepath_window = "");
 
 private:
 

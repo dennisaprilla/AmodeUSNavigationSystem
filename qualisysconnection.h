@@ -67,7 +67,7 @@ public:
      *
      * @return An object of QualisysTransformationManager which stores the current transformation.
      */
-    QualisysTransformationManager getTManager();
+    const QualisysTransformationManager& getTManager() const override;
 
     /**
      * @brief Start qualisys streaming with QThread
@@ -88,6 +88,7 @@ public:
      * QualisysConnection to be able to choose between streaming marker and rigid body. Nah, later..
      */
     void setDataStream(QString datatype, bool useForce) override;
+
 
 protected:
     /**

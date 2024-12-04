@@ -40,6 +40,11 @@ public:
      */
     virtual void setDataStream(QString datatype, bool useForce) = 0;
 
+    /**
+     * @brief A virtual function such that getTManager() can be used across two child class
+     */
+    virtual const QualisysTransformationManager& getTManager() const = 0;
+
 signals:
     /**
      * @brief Emits a tmanager, which consists of transformations of rigid body that is detected by Qualisys/Vicon
