@@ -876,6 +876,15 @@ void MainWindow::volumeReconstructorCmdFinished()
 {
     qDebug() << "Process exited with code:" << process->exitCode();
 
+    // Delete everything in the scatterplot
+    for (QScatter3DSeries *series : scatter->seriesList()) {
+        scatter->removeSeries(series);
+    }
+
+    // delete the related object, somehow there is bug if i dont do this.
+    if (myMHAReader!=nullptr) delete myMHAReader;
+    if (myVolume3DController!=nullptr) delete myVolume3DController;
+
     // Instantiate MHAReader object to read the mha file (special for volume)
     myMHAReader = new MHAReader(ui->lineEdit_volumeSource->text().toStdString());
     // Read the volume image
@@ -884,15 +893,15 @@ void MainWindow::volumeReconstructorCmdFinished()
     // manipulate the scatter and decode the data according to the mha
     myVolume3DController = new Volume3DController(nullptr, scatter, myMHAReader);
 
-    // set initial threshold for slider (i copy paste from MainWindow::on_pushButton_volumeLoad_clicked)
+    // set initial threshold for slider
     std::array<int, 2> pixelintensityrange = myVolume3DController->getPixelIntensityRange();
     int init_range     = pixelintensityrange[1] - pixelintensityrange[0];
     int init_threshold = pixelintensityrange[0] + (init_range/2);
-    ui->horizontalSlider_volumeThreshold->setMinimum(pixelintensityrange[0]+init_range*0.4);
+    ui->horizontalSlider_volumeThreshold->setMinimum(pixelintensityrange[0]+init_range*0.1);
     ui->horizontalSlider_volumeThreshold->setMaximum(pixelintensityrange[1]-init_range*0.1);
     ui->horizontalSlider_volumeThreshold->setSliderPosition(init_threshold);
     // set the label for slider
-    ui->label_volumePixelValMin->setText(QString::number(pixelintensityrange[0]+init_range*0.4));
+    ui->label_volumePixelValMin->setText(QString::number(pixelintensityrange[0]+init_range*0.1));
     ui->label_volumePixelValMax->setText(QString::number(pixelintensityrange[1]-init_range*0.1));
 
     // Connect the slider signal to updateVolume, if the user slide the threshold, the volume also change accordingly
