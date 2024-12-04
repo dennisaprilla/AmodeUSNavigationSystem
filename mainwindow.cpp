@@ -184,8 +184,8 @@ bool MainWindow::initNewTrial()
     path_snapshot_     = path_trial_ + "/" +  dir_snapshot_;
 
     // initialize some QLineEdit, to make things easier for the user
-    ui->lineEdit_mhaPath->setText(path_trial_+"/");
-    ui->lineEdit_volumeOutput->setText(path_trial_+"/");
+    ui->lineEdit_mhaPath->setText(path_bonescan_+"/");
+    ui->lineEdit_volumeOutput->setText(path_bonescan_+"/");
 
     // if the function executed till here, it means everything is good
     return true;
@@ -1509,6 +1509,73 @@ void MainWindow::on_pushButton_amodeSnapshot_clicked()
     }
 
     qDebug() << "MainWindow::on_pushButton_amodeSnapshot_clicked() Data written to" << rigidbodyFilepath_filename << "successfully.";
+
+
+    // ==========================================================
+    // Handle setting up window snapshot
+    // ==========================================================
+
+
+    // check if the user skip one plot with no window set
+    bool isSkipped = false;
+    for(std::size_t i = 0; i < amode_group.size(); ++i)
+    {
+        // get the current amodePlots object and get the positions of the line
+        QCustomPlotIntervalWindow *current_plot = amodePlots.at(i);
+        auto positions = current_plot->getLinePositions();
+
+        if(!positions[1].has_value())
+        {
+            isSkipped = true;
+            break;
+        }
+    }
+
+    // if the user is indeed skipping one plot with no window set, ask for confirmation
+    if (isSkipped)
+    {
+        QMessageBox::StandardButton reply;
+        reply = QMessageBox::question( this, "Confirmation",
+                                      "There is one or more window that is yet to be set. Are you sure you want to proceed?",
+                                      QMessageBox::Ok | QMessageBox::Cancel);
+
+        if (reply == QMessageBox::Ok) {
+            qDebug() << "MainWindow::on_pushButton_amodeWindow_clicked() continue saving window even though there is exists plot without window set";
+        } else {
+            qDebug() << "MainWindow::on_pushButton_amodeWindow_clicked() cancelling saving window";
+            return;
+        }
+    }
+
+    // loop for all member of groups
+    for(std::size_t i = 0; i < amode_group.size(); ++i)
+    {
+        // get the current Config Data
+        AmodeConfig::Data current_data = amode_group.at(i);
+
+        // get the current amodePlots object and get the positions of the line
+        QCustomPlotIntervalWindow *current_plot = amodePlots.at(i);
+        auto positions = current_plot->getLinePositions();
+
+        // set the window
+        myAmodeConfig->setWindowByNumber(current_data.number, positions);
+    }
+
+
+    // ==========================================================
+    // Handle setting up window snapshot
+    // ==========================================================
+
+    // i need to set the different directory here
+    QString windowFilename = timestamp_currentEpochMillis_str + "_WindowConfig.csv";
+    QString windowFilepath_filename = path_snapshot_ + "/" + windowFilename;
+
+    // save here
+    if(myAmodeConfig->exportWindow(windowFilepath_filename.toStdString()))
+        QMessageBox::information(this, "Saving success", "Window configuration is successfuly saved");
+    else
+        QMessageBox::information(this, "Saving failed", "There is something wrong when saving the window configuration file");
+
 }
 
 void MainWindow::startIntermediateRecording()

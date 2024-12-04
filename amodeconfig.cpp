@@ -71,10 +71,14 @@ void AmodeConfig::loadData(const std::string& filepath) {
     }
 }
 
-bool AmodeConfig::exportWindow()
+bool AmodeConfig::exportWindow(const std::string& newfilepath_window)
 {
-    // create new file, in the same directory as the amodeconfig file
-    std::ofstream file(filepath_window_, std::ios::out);
+    // Determine the file path to use, if the user don't specify the path, it will use filepath_window_ (initialized in the constructor)
+    // else, use the newfilepath_window
+    std::string export_path = newfilepath_window.empty() ? filepath_window_ : newfilepath_window;
+
+    // Create new file at the determined path
+    std::ofstream file(export_path, std::ios::out);
 
     if (!file.is_open()) {
         qDebug() << "AmodeConfig::exportWindow() Error: Unable to open file " << filepath_window_;
