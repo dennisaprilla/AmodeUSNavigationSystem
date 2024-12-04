@@ -19,7 +19,8 @@ public:
     explicit MeasurementWindow(AmodeConnection *amodeConnection, MocapConnection *mocapConnection, bool isIntermRec, QWidget *parent = nullptr);
     ~MeasurementWindow();
 
-    void setRecordPath(const QString &path);
+    void setRecordParentPath(const QString &path);
+    QString createNumberedFolder(const QString& basePath);
 
 public slots:
     void on_amodeConnected(AmodeConnection *amodeConnection);
@@ -42,6 +43,9 @@ private:
 
     bool isIntermediateRecording = false;
     bool isMeasurementRecording  = false;
+
+    QString record_parentpath_  = "";
+    QString record_currentpath_ = "";
 
 signals:
     void request_stop_amodeTimedRecording();

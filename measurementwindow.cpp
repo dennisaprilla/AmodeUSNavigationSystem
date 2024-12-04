@@ -1,4 +1,5 @@
 #include "measurementwindow.h"
+#include "qregularexpression.h"
 #include "ui_measurementwindow.h"
 
 #include <QFileDialog>
@@ -39,9 +40,22 @@ MeasurementWindow::~MeasurementWindow()
     delete ui;
 }
 
-void MeasurementWindow::setRecordPath(const QString &path)
+void MeasurementWindow::setRecordParentPath(const QString &path)
 {
-    ui->lineEdit_recordPath->setText(path+"/");
+    // Set the parent path
+    record_parentpath_ = path;
+
+    // create a numbered folder for each of the recording
+    QString tmp = createNumberedFolder(record_parentpath_);
+    // If the string is empty, there is something wrong when creating the numbered folder
+    if (tmp.isEmpty())
+    {
+        qDebug() << "MeasurementWindow::setRecordParentPath Something wrong when creating a new folder. Use the path_measurement_ directory instead.";
+        record_currentpath_ = record_parentpath_;
+    }
+    // If everyting is good, use this path for the next recording
+    record_currentpath_ = tmp;
+    ui->lineEdit_recordPath->setText(record_currentpath_+"/");
 }
 
 void MeasurementWindow::on_amodeConnected(AmodeConnection *amodeConnection)
@@ -173,7 +187,59 @@ void MeasurementWindow::on_pushButton_recordButton_clicked()
         ui->pushButton_recordButton->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::MediaRecord));
         // reset the flag
         isMeasurementRecording = false;
+
+        // Create a numbered folder for the next recording
+        QString tmp = createNumberedFolder(record_parentpath_);
+        // If the string is empty, there is something wrong when creating the numbered folder
+        if (tmp.isEmpty())
+        {
+            qDebug() << "MeasurementWindow::setRecordParentPath Something wrong when creating a new folder. Use the path_measurement_ directory instead.";
+            record_currentpath_ = record_parentpath_;
+        }
+        // If everyting is good, use this path for the next recording
+        record_currentpath_ = tmp;
+        ui->lineEdit_recordPath->setText(record_currentpath_+"/");
+
+        // give information to user that it finished recording
+        QMessageBox::information(this, "Finsihed recording", "Recording is finished. Check measurement folder.");
     }
 
+}
+
+QString MeasurementWindow::createNumberedFolder(const QString& basePath) {
+    // Check if the base path exists
+    QDir dir(basePath);
+    if (!dir.exists()) {
+        qWarning() << "Base path does not exist:" << basePath;
+        return QString();
+    }
+
+    // Regular expression to match folder names containing numbers
+    QRegularExpression regex(R"((\d+))");
+    int maxNum = -1; // Start with -1 so the first folder will be 0 (0000)
+
+    // Iterate through the existing folders in the directory
+    for (const QFileInfo &entry : dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+        QRegularExpressionMatch match = regex.match(entry.fileName());
+        if (match.hasMatch()) {
+            int currentNum = match.captured(1).toInt();
+            if (currentNum > maxNum) {
+                maxNum = currentNum;
+            }
+        }
+    }
+
+    // Generate the next folder name with leading zeros (4 digits)
+    int nextNum = maxNum + 1; // Start from 0 if no folders exist
+    QString newFolderName = QString("%1").arg(nextNum, 4, 10, QChar('0'));
+
+    // Create the new folder
+    if (!dir.mkdir(newFolderName)) {
+        qWarning() << "Failed to create folder:" << newFolderName;
+        return QString();
+    }
+
+    qDebug() << "Created folder:" << newFolderName;
+    return newFolderName;
 }
 

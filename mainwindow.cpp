@@ -769,7 +769,7 @@ void MainWindow::on_pushButton_volumeLoad_clicked()
     ui->label_volumePixelValMin->setText(QString::number(pixelintensityrange[0]+init_range*0.1));
     ui->label_volumePixelValMax->setText(QString::number(pixelintensityrange[1]-init_range*0.1));
 
-    // Connect the slider signal to updateVolume, if the user slide the threshold, the volume also change accordingly    
+    // Connect the slider signal to updateVolume, if the user slide the threshold, the volume also change accordingly
     connect(ui->horizontalSlider_volumeThreshold, &QSlider::valueChanged, myVolume3DController, &Volume3DController::updateVolume);
 }
 
@@ -1001,7 +1001,7 @@ void MainWindow::on_pushButton_amodeConnect_clicked()
         disconnect(myAmodeConnection, &AmodeConnection::dataReceived, this, &MainWindow::displayUSsignal);
         disconnect(myAmodeConnection, &AmodeConnection::errorOccured, this, &MainWindow::disconnectUSsignal);
         // delete the amodeconnection object, and set the pointer to nullptr to prevent pointer dangling
-        delete myAmodeConnection;        
+        delete myAmodeConnection;
         myAmodeConnection = nullptr;
 
         // set the isAmodeStream to be true again, means that the system is ready to stream again now
@@ -1717,7 +1717,7 @@ void MainWindow::on_pushButton_amodeIntermediateRecord_clicked()
         }
 
         // stopping the recording
-        myAmodeTimedRecorder->stopRecording();        
+        myAmodeTimedRecorder->stopRecording();
 
         // reset the flag
         isAmodeIntermediateRecord = false;
@@ -1832,7 +1832,7 @@ void MainWindow::openMeasurementWindow()
 
         // Create an instance of the recording window
         measurementwindow = new MeasurementWindow(myAmodeConnection, myMocapConnection, myAmodeTimedRecorder!=nullptr);
-        measurementwindow->setRecordPath(path_trial_+"/"+dir_measurement_);
+        measurementwindow->setRecordParentPath(path_measurement_);
 
         // Connect the necessary signal to slots
         connect(this, &MainWindow::amodeConnected, measurementwindow, &MeasurementWindow::on_amodeConnected);
@@ -1850,8 +1850,3 @@ void MainWindow::openMeasurementWindow()
     }
     measurementwindow->show();  // Show the second window
 }
-
-
-
-
-
