@@ -39,15 +39,22 @@ void AmodeTimedRecorder::setFileParentPath(const QString &fileParentPath)
     m_fileParentPath = fileParentPath;
 
     // create a numbered folder for each of the recording
-    QString tmp = createNumberedFolder(m_fileParentPath);
+    QString foldernumber = createNumberedFolder(m_fileParentPath);
+
     // If the string is empty, there is something wrong when creating the numbered folder
-    if (tmp.isEmpty())
+    if (foldernumber.isEmpty())
     {
         qDebug() << "MeasurementWindow::setRecordParentPath Something wrong when creating a new folder. Use the path_measurement_ directory instead.";
         m_fileCurrentPath = m_fileParentPath;
     }
-    // If everyting is good, use this path for the next recording
-    m_fileCurrentPath = tmp;
+    else
+    {
+        // If everyting is good, use this path for the next recording
+        m_fileCurrentPath = m_fileParentPath + "/" + foldernumber;
+    }
+
+    m_fileCurrentPath = m_fileCurrentPath + "/";
+    qDebug() << "AmodeTimedRecorder::setFileParentPath() current record path is: " << m_fileCurrentPath;
 }
 
 QString AmodeTimedRecorder::createNumberedFolder(const QString& basePath) {

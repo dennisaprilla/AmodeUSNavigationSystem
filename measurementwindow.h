@@ -43,8 +43,8 @@ private:
     bool isIntermediateRecording = false;
     bool isMeasurementRecording  = false;
 
-    QString record_parentpath_  = "";
-    QString record_currentpath_ = "";
+    QString record_parentpath_;
+    QString record_currentpath_;
 
     /**
      * @brief Creates a new numbered folder in the given path starting from zero if no folders exist.
@@ -53,6 +53,11 @@ private:
      * @return QString The full path of the created folder (e.g., "D:/path/to/base/0000"), or an empty string if an error occurred.
      */
     QString createNumberedFolder(const QString& basePath);
+
+    /**
+     * @brief updateCurrentRecordPath
+     */
+    void updateCurrentRecordPath();
 
 signals:
     void request_stop_amodeTimedRecording();

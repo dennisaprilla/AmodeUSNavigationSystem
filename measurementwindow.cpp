@@ -11,6 +11,8 @@ MeasurementWindow::MeasurementWindow(AmodeConnection *amodeConnection, MocapConn
     , myAmodeConnection(amodeConnection)
     , myMocapConnection(mocapConnection)
     , isIntermediateRecording(isIntermRec)
+    , record_parentpath_("")
+    , record_currentpath_("")
 {
     ui->setupUi(this);
 
@@ -44,18 +46,29 @@ void MeasurementWindow::setRecordParentPath(const QString &path)
 {
     // Set the parent path
     record_parentpath_ = path;
+    // create numbered folder in the parent path
+    updateCurrentRecordPath();
+}
 
+void MeasurementWindow::updateCurrentRecordPath()
+{
     // create a numbered folder for each of the recording
-    QString tmp = createNumberedFolder(record_parentpath_);
+    QString foldernumber = createNumberedFolder(record_parentpath_);
+
     // If the string is empty, there is something wrong when creating the numbered folder
-    if (tmp.isEmpty())
+    if (foldernumber.isEmpty())
     {
         qDebug() << "MeasurementWindow::setRecordParentPath Something wrong when creating a new folder. Use the path_measurement_ directory instead.";
         record_currentpath_ = record_parentpath_;
     }
-    // If everyting is good, use this path for the next recording
-    record_currentpath_ = tmp;
+    else
+    {
+        // If everyting is good, use this path for the next recording
+        record_currentpath_ = record_parentpath_ + "/" + foldernumber;
+    }
+
     ui->lineEdit_recordPath->setText(record_currentpath_+"/");
+    qDebug() << "MeasurementWindow::setRecordParentPath() current record path is: " << record_currentpath_;
 }
 
 void MeasurementWindow::on_amodeConnected(AmodeConnection *amodeConnection)
@@ -186,26 +199,17 @@ void MeasurementWindow::on_pushButton_recordButton_clicked()
         ui->pushButton_recordButton->setText("Record");
         ui->pushButton_recordButton->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::MediaRecord));
 
-        // Create a numbered folder for the next recording
-        QString tmp = createNumberedFolder(record_parentpath_);
-        // If the string is empty, there is something wrong when creating the numbered folder
-        if (tmp.isEmpty())
-        {
-            qDebug() << "MeasurementWindow::setRecordParentPath Something wrong when creating a new folder. Use the path_measurement_ directory instead.";
-            record_currentpath_ = record_parentpath_;
-        }
-        // If everyting is good, use this path for the next recording
-        record_currentpath_ = tmp;
-        ui->lineEdit_recordPath->setText(record_currentpath_+"/");
-
         // give information to user that it finished recording
         QMessageBox::information(this, "Finsihed recording", "Recording is finished. Check measurement folder.");
+        // reset the flag
+        isMeasurementRecording = false;
 
+
+        // create a numbered folder for the next recording
+        updateCurrentRecordPath();
         // signals the mainwindow that it can start the timed recording (if later the user confirm it)
         emit request_start_amodeTimedRecording();
 
-        // reset the flag
-        isMeasurementRecording = false;
     }
 
 }
@@ -214,7 +218,7 @@ QString MeasurementWindow::createNumberedFolder(const QString& basePath) {
     // Check if the base path exists
     QDir dir(basePath);
     if (!dir.exists()) {
-        qWarning() << "Base path does not exist:" << basePath;
+        qWarning() << "MeasurementWindow::createNumberedFolder() Base path does not exist:" << basePath;
         return QString();
     }
 
@@ -239,11 +243,11 @@ QString MeasurementWindow::createNumberedFolder(const QString& basePath) {
 
     // Create the new folder
     if (!dir.mkdir(newFolderName)) {
-        qWarning() << "Failed to create folder:" << newFolderName;
+        qWarning() << "MeasurementWindow::createNumberedFolder() Failed to create folder:" << newFolderName;
         return QString();
     }
 
-    qDebug() << "Created folder:" << newFolderName;
+    qDebug() << "MeasurementWindow::createNumberedFolder() Created folder:" << newFolderName;
     return newFolderName;
 }
 
