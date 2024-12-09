@@ -1619,15 +1619,20 @@ void MainWindow::startIntermediateRecording()
 
     // connecting signal from AmodeConnection class to AmodeTimedRecorder class to pass the Amode data
     connect(myAmodeConnection, &AmodeConnection::dataReceived, myAmodeTimedRecorder, &AmodeTimedRecorder::on_amodeSignalReceived);
-    // connecting signal from AmodeTimedRecorder class to MainWindow class, to notify if amodeTimedRecordingStopped
+    // This connection is to notify this class (MainWindow) to destroy the AmodeTimedRecorder object
     connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, this, &MainWindow::stopIntermediateRecording, Qt::UniqueConnection);
 
     // If measurementwindow is active, let's connect some signal and slots too
     if (measurementwindow!=nullptr)
     {
+        // This connection is to notify MeasurementWindow to change its UI, telling user that AmodeTimedRecorder is started
         connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStarted, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStarted, Qt::UniqueConnection);
+        // Similar to connection above, but to tell user that AmodeTimedRecorder is stopped
         connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStopped, Qt::UniqueConnection);
+        // This connection is to notify myAmodeTimedRecorder to stop the recording from MeasurementWindow, the two class communicating directly without MainWindow
         connect(measurementwindow, &MeasurementWindow::request_stop_amodeTimedRecording, myAmodeTimedRecorder, &AmodeTimedRecorder::requested_stop_amodeTimedRecording, Qt::UniqueConnection);
+        // Similar to above, but to start the timed recording, however, it needs to go to MainWindow::restartIntermediateRecording function first to 1) confirm
+        // user to start the AmodeTimedRecorder again, 2) to create new AmodeTimedRecorder object (remember it was destroyed every time we stop the timed recording)
         connect(measurementwindow, &MeasurementWindow::request_start_amodeTimedRecording, this, &MainWindow::restartIntermediateRecording, Qt::UniqueConnection);
     }
 
@@ -1647,6 +1652,8 @@ void MainWindow::startIntermediateRecording()
 
 void MainWindow::stopIntermediateRecording()
 {
+    qDebug() << "MainWindow::stopIntermediateRecording() MainWindow attempted to stop intermediate recording. If it stopped already, ignore";
+
     // if the isAmodeIntermediateRecord now is false, it means that we are not recording. Don't do anything.
     // This if is for safety. If the isAmodeIntermediateRecord is true, it will skip this block and do the task.
     if (!isAmodeIntermediateRecord)
@@ -1667,7 +1674,7 @@ void MainWindow::stopIntermediateRecording()
     //   that will be called when myAmodeTimedRecorder emits a signal called amodeTimedRecordingStopped(). When the signal emitted,
     //   it means that the recording is already stop, so we don't need to call myAmodeTimedRecorder->stopRecording().
 
-    // disconnect any signal
+    // disconnect any signal and slot that relates to myAmodeTimedRecorder
     disconnect(myAmodeConnection, &AmodeConnection::dataReceived, myAmodeTimedRecorder, &AmodeTimedRecorder::on_amodeSignalReceived);
     disconnect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, this, &MainWindow::stopIntermediateRecording);
     if (measurementwindow!=nullptr)
@@ -1675,7 +1682,7 @@ void MainWindow::stopIntermediateRecording()
         disconnect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStarted, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStarted);
         disconnect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStopped);
         disconnect(measurementwindow, &MeasurementWindow::request_stop_amodeTimedRecording, myAmodeTimedRecorder, &AmodeTimedRecorder::requested_stop_amodeTimedRecording);
-        disconnect(measurementwindow, &MeasurementWindow::request_start_amodeTimedRecording, this, &MainWindow::restartIntermediateRecording);
+        // disconnect(measurementwindow, &MeasurementWindow::request_start_amodeTimedRecording, this, &MainWindow::restartIntermediateRecording);
     }
 
     // delete the object??
@@ -1685,10 +1692,14 @@ void MainWindow::stopIntermediateRecording()
     // reset the flag
     isAmodeIntermediateRecord = false;
     ui->label_indicatorIntermRec->setStyleSheet("QLabel{background-color: rgb(200,255,200); border-radius: 5px;}");
+
+    qDebug() << "MainWindow::stopIntermediateRecording() myAmodeTimedRecorder stopped and deleted";
 }
 
 void MainWindow::restartIntermediateRecording()
 {
+    qDebug() << "MainWindow::restartIntermediateRecording() called";
+
     // First, ask user confirmation
     QMessageBox::StandardButton reply;
     reply = QMessageBox::question( this, "Confirmation",
@@ -1876,19 +1887,28 @@ void MainWindow::openMeasurementWindow()
         measurementwindow = new MeasurementWindow(myAmodeConnection, myMocapConnection, myAmodeTimedRecorder!=nullptr);
         measurementwindow->setRecordParentPath(path_measurement_);
 
-        // Connect the necessary signal about the status of the connections from MainWindow to MeasurementWindow
+        // The connection is just to pass the AmodeConnection (pointer) object
         connect(this, &MainWindow::amodeConnected, measurementwindow, &MeasurementWindow::on_amodeConnected);
+        // Similar to above, but to "nullify" the pointer once disconnected
         connect(this, &MainWindow::amodeDisconnected, measurementwindow, &MeasurementWindow::on_amodeDisconnected);
+        // Similar to above but to pass MocapConnection
         connect(this, &MainWindow::mocapConnected, measurementwindow, &MeasurementWindow::on_mocapConnected);
+        // This is one is nothing, just here for symmetry
         // connect(this, &MainWindow::mocapDisconnected, measurementwindow, &MeasurementWindow::on_mocapDisconnected);
 
         if(myAmodeTimedRecorder!=nullptr)
         {
+            // This connection is to notify MeasurementWindow to change its UI, telling user that AmodeTimedRecorder is started
             connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStarted, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStarted, Qt::UniqueConnection);
+            // Similar to connection above, but to tell user that AmodeTimedRecorder is stopped
             connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStopped, Qt::UniqueConnection);
+            // This connection is to notify this class (MainWindow) to destroy the AmodeTimedRecorder object
             connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, this, &MainWindow::stopIntermediateRecording, Qt::UniqueConnection);
 
+            // This connection is to notify myAmodeTimedRecorder to stop the recording from MeasurementWindow, the two class communicating directly without MainWindow
             connect(measurementwindow, &MeasurementWindow::request_stop_amodeTimedRecording, myAmodeTimedRecorder, &AmodeTimedRecorder::requested_stop_amodeTimedRecording, Qt::UniqueConnection);
+            // Similar to above, but to start the timed recording, however, it needs to go to MainWindow::restartIntermediateRecording function first to 1) confirm
+            // user to start the AmodeTimedRecorder again, 2) to create new AmodeTimedRecorder object (remember it was destroyed every time we stop the timed recording)
             connect(measurementwindow, &MeasurementWindow::request_start_amodeTimedRecording, this, &MainWindow::restartIntermediateRecording, Qt::UniqueConnection);
         }
 

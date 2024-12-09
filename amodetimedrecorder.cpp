@@ -90,7 +90,7 @@ QString AmodeTimedRecorder::createNumberedFolder(const QString& basePath) {
         return QString();
     }
 
-    qDebug() << "Created folder:" << newFolderName;
+    qDebug() << "AmodeTimedRecorder::createNumberedFolder() Created folder:" << newFolderName;
     return newFolderName;
 }
 

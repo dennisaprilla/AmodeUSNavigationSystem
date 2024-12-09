@@ -204,11 +204,13 @@ void MeasurementWindow::on_pushButton_recordButton_clicked()
         // reset the flag
         isMeasurementRecording = false;
 
-
         // create a numbered folder for the next recording
         updateCurrentRecordPath();
         // signals the mainwindow that it can start the timed recording (if later the user confirm it)
         emit request_start_amodeTimedRecording();
+
+        // just to tell the user
+        qDebug() << "MeasurementWindow::on_pushButton_recordButton_clicked() request_start_amodeTimedRecording signal is emitted";
 
     }
 
