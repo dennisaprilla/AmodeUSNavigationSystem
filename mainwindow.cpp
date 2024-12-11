@@ -1828,12 +1828,21 @@ void MainWindow::on_checkBox_volumeShow3DSignal_clicked(bool checked)
         // get the a-mode groups
         std::vector<AmodeConfig::Data> amode_group = myAmodeConfig->getDataByGroupName(ui->comboBox_amodeNumber->currentText().toStdString());
 
+        qDebug() << "MainWindow::on_checkBox_volumeShow3DSignal_clicked() Trying to create myVolumeAmodeController object";
+
         // instantiate myVolumeAmodeController
         // for note: i declare intentionally the argument for amode_group as value not the reference (a pointer to amode_group)
         // because amode_group here declared locally, so the reference will be gone outside of this scope.
         myVolumeAmodeController = new VolumeAmodeController(nullptr, scatter, amode_group);
         myVolumeAmodeController->setSignalDisplayMode(ui->comboBox_volume3DSignalMode->currentIndex());
         myVolumeAmodeController->setActiveHolder(ui->comboBox_amodeNumber->currentText().toStdString());
+
+        qDebug() << "MainWindow::on_checkBox_volumeShow3DSignal_clicked() myVolumeAmodeController object created successfuly";
+
+        // Connect a lambda to stop the thread and schedule deletion
+        connect(myVolumeAmodeController, &QObject::destroyed, this, []() {
+            qDebug() << "myVolumeAmodeController has been deleted successfully.";
+        });
 
         // connect necessary signal (data received from mocap connection and amode connection) to VolumeAmodeController slots
         connect(myMocapConnection, &MocapConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onRigidBodyReceived);
@@ -1851,21 +1860,35 @@ void MainWindow::on_checkBox_volumeShow3DSignal_clicked(bool checked)
     else
     {
         // I add this condition, because if the user clicked the connect button for bmode2d3d, it will trigger
-        // this function with arg1=false (which is this block of code). The problem is if the user never
+        // this function with checked=false (which is this block of code). The problem is if the user never
         // click show3Dsignal checkboxbefore, this part will be executed and myMocapConnection, myAmodeConnection
         // and myVolumeAmodeController are still not initialized yet. To prevent this to happen, i just put this condition below.
 
-        if(myMocapConnection != nullptr && myVolumeAmodeController != nullptr)
+        if(myVolumeAmodeController==nullptr)
+        {
+            // enable changing the state of combo box for variation display mode for amode 3d signal
+            ui->comboBox_volume3DSignalMode->setEnabled(false);
+            return;
+        }
+
+        if(myMocapConnection != nullptr)
             disconnect(myMocapConnection, &MocapConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onRigidBodyReceived);
 
-        if(myAmodeConnection != nullptr && myVolumeAmodeController != nullptr)
+        if(myAmodeConnection != nullptr)
             disconnect(myAmodeConnection, &AmodeConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onAmodeSignalReceived);
 
-        delete myVolumeAmodeController;
+        qDebug() << "MainWindow::on_checkBox_volumeShow3DSignal_clicked() Trying to delete myVolumeAmodeController object";
+
+        // Stop the thread and schedule deletion
+        if (myVolumeAmodeController->thread()->isRunning()) {
+            myVolumeAmodeController->thread()->quit();
+            myVolumeAmodeController->thread()->wait();
+        }
+
+        myVolumeAmodeController->deleteLater();
         myVolumeAmodeController = nullptr;
 
-        // enable changing the state of combo box for variation display mode for amode 3d signal
-        ui->comboBox_volume3DSignalMode->setEnabled(false);
+        qDebug() << "MainWindow::on_checkBox_volumeShow3DSignal_clicked() myVolumeAmodeController object deleted successfuly????";
     }
 }
 
