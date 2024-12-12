@@ -769,7 +769,7 @@ void MainWindow::on_pushButton_volumeLoad_clicked()
     ui->label_volumePixelValMin->setText(QString::number(pixelintensityrange[0]+init_range*0.1));
     ui->label_volumePixelValMax->setText(QString::number(pixelintensityrange[1]-init_range*0.1));
 
-    // Connect the slider signal to updateVolume, if the user slide the threshold, the volume also change accordingly    
+    // Connect the slider signal to updateVolume, if the user slide the threshold, the volume also change accordingly
     connect(ui->horizontalSlider_volumeThreshold, &QSlider::valueChanged, myVolume3DController, &Volume3DController::updateVolume);
 }
 
@@ -1001,7 +1001,7 @@ void MainWindow::on_pushButton_amodeConnect_clicked()
         disconnect(myAmodeConnection, &AmodeConnection::dataReceived, this, &MainWindow::displayUSsignal);
         disconnect(myAmodeConnection, &AmodeConnection::errorOccured, this, &MainWindow::disconnectUSsignal);
         // delete the amodeconnection object, and set the pointer to nullptr to prevent pointer dangling
-        delete myAmodeConnection;        
+        delete myAmodeConnection;
         myAmodeConnection = nullptr;
 
         // set the isAmodeStream to be true again, means that the system is ready to stream again now
@@ -1344,6 +1344,14 @@ void MainWindow::on_pushButton_amodeWindow_clicked()
 }
 
 
+/* *****************************************************************************************
+ * *****************************************************************************************
+ *
+ * Everything that is related to A-mode snapshot and intermediate recording
+ *
+ * *****************************************************************************************
+ * ***************************************************************************************** */
+
 void MainWindow::on_pushButton_amodeSnapshot_clicked()
 {
     if(myAmodeConnection==nullptr)
@@ -1595,72 +1603,117 @@ void MainWindow::startIntermediateRecording()
         return;
     }
 
-    // if the isAmodeIntermediateRecord now is false, it means we are not recording. Let's record.
+    // if the isAmodeIntermediateRecord now is true, it means that we are recording. Don't do anything.
+    // This if is for safety. If the isAmodeIntermediateRecord is false, it will skip this block and do the task.
+    if (isAmodeIntermediateRecord)
+    {
+        qDebug() << "MainWindow::startIntermediateRecording() The recording is already started. Ignoring the action.";
+        return;
+    }
+
+    // instantiate AmodeTimedRecorder
+    myAmodeTimedRecorder = new AmodeTimedRecorder();
+    myAmodeTimedRecorder->setFileParentPath(path_intermediate_);
+    myAmodeTimedRecorder->setFilePostfix(ui->comboBox_amodeNumber->currentText());
+    myAmodeTimedRecorder->setRecordTimer(500);
+
+    // connecting signal from AmodeConnection class to AmodeTimedRecorder class to pass the Amode data
+    connect(myAmodeConnection, &AmodeConnection::dataReceived, myAmodeTimedRecorder, &AmodeTimedRecorder::on_amodeSignalReceived);
+    // This connection is to notify this class (MainWindow) to destroy the AmodeTimedRecorder object
+    connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, this, &MainWindow::stopIntermediateRecording, Qt::UniqueConnection);
+
+    // If measurementwindow is active, let's connect some signal and slots too
+    if (measurementwindow!=nullptr)
+    {
+        // This connection is to notify MeasurementWindow to change its UI, telling user that AmodeTimedRecorder is started
+        connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStarted, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStarted, Qt::UniqueConnection);
+        // Similar to connection above, but to tell user that AmodeTimedRecorder is stopped
+        connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStopped, Qt::UniqueConnection);
+        // This connection is to notify myAmodeTimedRecorder to stop the recording from MeasurementWindow, the two class communicating directly without MainWindow
+        connect(measurementwindow, &MeasurementWindow::request_stop_amodeTimedRecording, myAmodeTimedRecorder, &AmodeTimedRecorder::requested_stop_amodeTimedRecording, Qt::UniqueConnection);
+        // Similar to above, but to start the timed recording, however, it needs to go to MainWindow::restartIntermediateRecording function first to 1) confirm
+        // user to start the AmodeTimedRecorder again, 2) to create new AmodeTimedRecorder object (remember it was destroyed every time we stop the timed recording)
+        connect(measurementwindow, &MeasurementWindow::request_start_amodeTimedRecording, this, &MainWindow::restartIntermediateRecording, Qt::UniqueConnection);
+    }
+
+    // - Comments for the lines above ^^^
+    // - There is another block of lines that is identical in the MainWindow::openMeasurementWindow(). Why you might ask?
+    // - I want that the connection is not only executed when measurementwindow is initialized. If we execute
+    //   startIntermediateRecording() after measurementwindow initialized, it will not affect the measurementwindow.
+
+    // start recording, and emit signal to indicate that we are now performing intermediate recording
+    // this signal should be caught by MeasurementWindow
+    myAmodeTimedRecorder->startRecording();
+
+    // set the flag
+    isAmodeIntermediateRecord = true;
+    ui->label_indicatorIntermRec->setStyleSheet("QLabel{background-color: green; border-radius: 5px;}");
+}
+
+void MainWindow::stopIntermediateRecording()
+{
+    qDebug() << "MainWindow::stopIntermediateRecording() MainWindow attempted to stop intermediate recording. If it stopped already, ignore";
+
+    // if the isAmodeIntermediateRecord now is false, it means that we are not recording. Don't do anything.
+    // This if is for safety. If the isAmodeIntermediateRecord is true, it will skip this block and do the task.
     if (!isAmodeIntermediateRecord)
     {
-        // instantiate AmodeTimedRecorder
-        myAmodeTimedRecorder = new AmodeTimedRecorder();
-        myAmodeTimedRecorder->setFilePath(path_trial_+"/"+dir_intermediate_+"/");
-        myAmodeTimedRecorder->setFilePostfix(ui->comboBox_amodeNumber->currentText());
-        myAmodeTimedRecorder->setRecordTimer(1000);
-
-        // connect signal from AmodeConnection::dataReceived to slot function AmodeTimedRecorder::onAmodeSignalReceived and start record
-        connect(myAmodeConnection, &AmodeConnection::dataReceived, myAmodeTimedRecorder, &AmodeTimedRecorder::on_amodeSignalReceived);
-        if (measurementwindow!=nullptr)
-        {
-            connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStarted, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStarted, Qt::UniqueConnection);
-            connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStopped, Qt::UniqueConnection);
-            connect(measurementwindow, &MeasurementWindow::request_stop_amodeTimedRecording, myAmodeTimedRecorder, &AmodeTimedRecorder::requested_stop_amodeTimedRecording, Qt::UniqueConnection);
-        }
-
-        // start recording, and emit signal to indicate that we are now performing intermediate recording
-        // this signal should be caught by MeasurementWindow
-        myAmodeTimedRecorder->startRecording();
-
-        // set the flag
-        isAmodeIntermediateRecord = true;
-        ui->label_indicatorIntermRec->setStyleSheet("QLabel{background-color: green; border-radius: 5px;}");
+        qDebug() << "MainWindow::startIntermediateRecording() There is no recording at the moment. Ignoring the action.";
+        return;
     }
 
-    // if isAmodeIntermediateRecord is now true, it means we are recording. Let's stop the record
-    else
-    {
-        // but fist, ask user confirmation
-        QMessageBox::StandardButton reply;
-        reply = QMessageBox::question( this, "Confirmation",
-                                      "Are you sure you want to stop the intermediate recording? You will loose the bridge between "
-                                      "Navigation Activity and Measurement Activity.",
-                                      QMessageBox::Ok | QMessageBox::Cancel);
-
-        // if use hit cancel, ignore everything else
-        if (reply == QMessageBox::Cancel)
-        {
-            qDebug() << "MainWindow::on_pushButton_amodeIntermediateRecord_clicked() cancelling stopping, continuing intermediate recording now.";
-            return;
-        }
-
-        // stopping the recording
+    // Stopping the recording if currently myAmodeTimedRecorder recording
+    if(myAmodeTimedRecorder->isCurrentlyRecording())
         myAmodeTimedRecorder->stopRecording();
 
-        // disconnect any signal
-        disconnect(myAmodeConnection, &AmodeConnection::dataReceived, myAmodeTimedRecorder, &AmodeTimedRecorder::on_amodeSignalReceived);
-        if (measurementwindow!=nullptr)
-        {
-            disconnect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStarted, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStarted);
-            disconnect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStopped);
-            connect(measurementwindow, &MeasurementWindow::request_stop_amodeTimedRecording, myAmodeTimedRecorder, &AmodeTimedRecorder::requested_stop_amodeTimedRecording);
-        }
+    // - Comment for the lines above ^^^
+    // - You might ask, what the fuck am i doing?? Firstly, you already asked in the beginning of this function that are we in the
+    //   middle of recording or not. Secondly, this function literally called STOPIntermediateRecording, and here you check
+    //   with an if block and if it is false you are not calling the myAmodeTimedRecorder->stopRecording()???
+    // - Okay hear me out, yes, granted, it looks super stupid. But this stopIntermediateRecording() function is a slot function
+    //   that will be called when myAmodeTimedRecorder emits a signal called amodeTimedRecordingStopped(). When the signal emitted,
+    //   it means that the recording is already stop, so we don't need to call myAmodeTimedRecorder->stopRecording().
 
-
-        // delete the object??
-        delete myAmodeTimedRecorder;
-        myAmodeTimedRecorder = nullptr;
-
-        // reset the flag
-        isAmodeIntermediateRecord = false;
-        ui->label_indicatorIntermRec->setStyleSheet("QLabel{background-color: rgb(200,255,200); border-radius: 5px;}");
-
+    // disconnect any signal and slot that relates to myAmodeTimedRecorder
+    disconnect(myAmodeConnection, &AmodeConnection::dataReceived, myAmodeTimedRecorder, &AmodeTimedRecorder::on_amodeSignalReceived);
+    disconnect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, this, &MainWindow::stopIntermediateRecording);
+    if (measurementwindow!=nullptr)
+    {
+        disconnect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStarted, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStarted);
+        disconnect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStopped);
+        disconnect(measurementwindow, &MeasurementWindow::request_stop_amodeTimedRecording, myAmodeTimedRecorder, &AmodeTimedRecorder::requested_stop_amodeTimedRecording);
+        // disconnect(measurementwindow, &MeasurementWindow::request_start_amodeTimedRecording, this, &MainWindow::restartIntermediateRecording);
     }
+
+    // delete the object??
+    delete myAmodeTimedRecorder;
+    myAmodeTimedRecorder = nullptr;
+
+    // reset the flag
+    isAmodeIntermediateRecord = false;
+    ui->label_indicatorIntermRec->setStyleSheet("QLabel{background-color: rgb(200,255,200); border-radius: 5px;}");
+
+    qDebug() << "MainWindow::stopIntermediateRecording() myAmodeTimedRecorder stopped and deleted";
+}
+
+void MainWindow::restartIntermediateRecording()
+{
+    qDebug() << "MainWindow::restartIntermediateRecording() called";
+
+    // First, ask user confirmation
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question( this, "Confirmation",
+                                  "Do you plan to do more Measurement Recording later? If yes, we will continue with the Intermediate Recording.",
+                                  QMessageBox::Yes | QMessageBox::No);
+    // if use hit cancel, ignore everything else
+    if (reply == QMessageBox::No)
+    {
+        qDebug() << "MainWindow::restartIntermediateRecording() User press No for recording later. Measurement and Intermediate Recording stopped.";
+        return;
+    }
+
+    qDebug() << "MainWindow::restartIntermediateRecording() User press Yes for recording later. Measurement Recording stopped but continuing the Intermediate Recording.";
+    startIntermediateRecording();
 }
 
 /* I probably still want to use this button, so i didn't delete it completely yet.
@@ -1717,7 +1770,7 @@ void MainWindow::on_pushButton_amodeIntermediateRecord_clicked()
         }
 
         // stopping the recording
-        myAmodeTimedRecorder->stopRecording();        
+        myAmodeTimedRecorder->stopRecording();
 
         // reset the flag
         isAmodeIntermediateRecord = false;
@@ -1775,12 +1828,21 @@ void MainWindow::on_checkBox_volumeShow3DSignal_clicked(bool checked)
         // get the a-mode groups
         std::vector<AmodeConfig::Data> amode_group = myAmodeConfig->getDataByGroupName(ui->comboBox_amodeNumber->currentText().toStdString());
 
+        qDebug() << "MainWindow::on_checkBox_volumeShow3DSignal_clicked() Trying to create myVolumeAmodeController object";
+
         // instantiate myVolumeAmodeController
         // for note: i declare intentionally the argument for amode_group as value not the reference (a pointer to amode_group)
         // because amode_group here declared locally, so the reference will be gone outside of this scope.
         myVolumeAmodeController = new VolumeAmodeController(nullptr, scatter, amode_group);
         myVolumeAmodeController->setSignalDisplayMode(ui->comboBox_volume3DSignalMode->currentIndex());
         myVolumeAmodeController->setActiveHolder(ui->comboBox_amodeNumber->currentText().toStdString());
+
+        qDebug() << "MainWindow::on_checkBox_volumeShow3DSignal_clicked() myVolumeAmodeController object created successfuly";
+
+        // Connect a lambda to stop the thread and schedule deletion
+        connect(myVolumeAmodeController, &QObject::destroyed, this, []() {
+            qDebug() << "myVolumeAmodeController has been deleted successfully.";
+        });
 
         // connect necessary signal (data received from mocap connection and amode connection) to VolumeAmodeController slots
         connect(myMocapConnection, &MocapConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onRigidBodyReceived);
@@ -1798,21 +1860,37 @@ void MainWindow::on_checkBox_volumeShow3DSignal_clicked(bool checked)
     else
     {
         // I add this condition, because if the user clicked the connect button for bmode2d3d, it will trigger
-        // this function with arg1=false (which is this block of code). The problem is if the user never
+        // this function with checked=false (which is this block of code). The problem is if the user never
         // click show3Dsignal checkboxbefore, this part will be executed and myMocapConnection, myAmodeConnection
         // and myVolumeAmodeController are still not initialized yet. To prevent this to happen, i just put this condition below.
 
-        if(myMocapConnection != nullptr && myVolumeAmodeController != nullptr)
+        if(myVolumeAmodeController==nullptr)
+        {
+            // enable changing the state of combo box for variation display mode for amode 3d signal
+            ui->comboBox_volume3DSignalMode->setEnabled(false);
+            return;
+        }
+
+        if(myMocapConnection != nullptr)
             disconnect(myMocapConnection, &MocapConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onRigidBodyReceived);
 
-        if(myAmodeConnection != nullptr && myVolumeAmodeController != nullptr)
+        if(myAmodeConnection != nullptr)
             disconnect(myAmodeConnection, &AmodeConnection::dataReceived, myVolumeAmodeController, &VolumeAmodeController::onAmodeSignalReceived);
 
-        delete myVolumeAmodeController;
+        qDebug() << "MainWindow::on_checkBox_volumeShow3DSignal_clicked() Trying to delete myVolumeAmodeController object";
+
+        // Create a local event loop. I need this object, to prevent myVolumeAmodeController deleted first than the thread inside it
+        QEventLoop loop;
+        // Connect the destroyed signal to quit the loop. I should have connect this, but i forgot. But when i run the code, it is perfectly fine somehow.
+        // connect(myVolumeAmodeController, &QObject::destroyed, &loop, &QEventLoop::quit);
+
+        myVolumeAmodeController->deleteLater();
         myVolumeAmodeController = nullptr;
 
-        // enable changing the state of combo box for variation display mode for amode 3d signal
-        ui->comboBox_volume3DSignalMode->setEnabled(false);
+        // Enter the event loop and wait for deletion. This is the part where we prevent the deletion before stopping the thread.
+        loop.exec();
+
+        qDebug() << "MainWindow::on_checkBox_volumeShow3DSignal_clicked() myVolumeAmodeController object deleted successfuly????";
     }
 }
 
@@ -1832,26 +1910,33 @@ void MainWindow::openMeasurementWindow()
 
         // Create an instance of the recording window
         measurementwindow = new MeasurementWindow(myAmodeConnection, myMocapConnection, myAmodeTimedRecorder!=nullptr);
-        measurementwindow->setRecordPath(path_trial_+"/"+dir_measurement_);
+        measurementwindow->setRecordParentPath(path_measurement_);
 
-        // Connect the necessary signal to slots
+        // The connection is just to pass the AmodeConnection (pointer) object
         connect(this, &MainWindow::amodeConnected, measurementwindow, &MeasurementWindow::on_amodeConnected);
+        // Similar to above, but to "nullify" the pointer once disconnected
         connect(this, &MainWindow::amodeDisconnected, measurementwindow, &MeasurementWindow::on_amodeDisconnected);
+        // Similar to above but to pass MocapConnection
         connect(this, &MainWindow::mocapConnected, measurementwindow, &MeasurementWindow::on_mocapConnected);
+        // This is one is nothing, just here for symmetry
         // connect(this, &MainWindow::mocapDisconnected, measurementwindow, &MeasurementWindow::on_mocapDisconnected);
 
         if(myAmodeTimedRecorder!=nullptr)
         {
+            // This connection is to notify MeasurementWindow to change its UI, telling user that AmodeTimedRecorder is started
             connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStarted, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStarted, Qt::UniqueConnection);
+            // Similar to connection above, but to tell user that AmodeTimedRecorder is stopped
             connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, measurementwindow, &MeasurementWindow::on_amodeTimedRecordingStopped, Qt::UniqueConnection);
+            // This connection is to notify this class (MainWindow) to destroy the AmodeTimedRecorder object
+            connect(myAmodeTimedRecorder, &AmodeTimedRecorder::amodeTimedRecordingStopped, this, &MainWindow::stopIntermediateRecording, Qt::UniqueConnection);
+
+            // This connection is to notify myAmodeTimedRecorder to stop the recording from MeasurementWindow, the two class communicating directly without MainWindow
             connect(measurementwindow, &MeasurementWindow::request_stop_amodeTimedRecording, myAmodeTimedRecorder, &AmodeTimedRecorder::requested_stop_amodeTimedRecording, Qt::UniqueConnection);
+            // Similar to above, but to start the timed recording, however, it needs to go to MainWindow::restartIntermediateRecording function first to 1) confirm
+            // user to start the AmodeTimedRecorder again, 2) to create new AmodeTimedRecorder object (remember it was destroyed every time we stop the timed recording)
+            connect(measurementwindow, &MeasurementWindow::request_start_amodeTimedRecording, this, &MainWindow::restartIntermediateRecording, Qt::UniqueConnection);
         }
 
     }
     measurementwindow->show();  // Show the second window
 }
-
-
-
-
-

@@ -3,7 +3,8 @@
 
 AmodeTimedRecorder::AmodeTimedRecorder(QObject *parent)
     : QObject(parent),
-    m_filePath(""),
+    m_fileCurrentPath(""),
+    m_fileParentPath(""),
     m_filePostfix(""),
     m_timerms(1000),
     timer(new QTimer(this)),
@@ -26,11 +27,73 @@ void AmodeTimedRecorder::setFilePostfix(const QString &filePostfix)
     m_filePostfix = "_" + filePostfix;
 }
 
-void AmodeTimedRecorder::setFilePath(const QString &filePath)
+// void AmodeTimedRecorder::setFilePath(const QString &filePath)
+// {
+//     // Set the path where the recorded files should be saved.
+//     m_filePath = filePath + "/";
+// }
+
+void AmodeTimedRecorder::setFileParentPath(const QString &fileParentPath)
 {
-    // Set the path where the recorded files should be saved.
-    m_filePath = filePath;
+    // Set the parent path
+    m_fileParentPath = fileParentPath;
+
+    // create a numbered folder for each of the recording
+    QString foldernumber = createNumberedFolder(m_fileParentPath);
+
+    // If the string is empty, there is something wrong when creating the numbered folder
+    if (foldernumber.isEmpty())
+    {
+        qDebug() << "MeasurementWindow::setRecordParentPath Something wrong when creating a new folder. Use the path_measurement_ directory instead.";
+        m_fileCurrentPath = m_fileParentPath;
+    }
+    else
+    {
+        // If everyting is good, use this path for the next recording
+        m_fileCurrentPath = m_fileParentPath + "/" + foldernumber;
+    }
+
+    m_fileCurrentPath = m_fileCurrentPath + "/";
+    qDebug() << "AmodeTimedRecorder::setFileParentPath() current record path is: " << m_fileCurrentPath;
 }
+
+QString AmodeTimedRecorder::createNumberedFolder(const QString& basePath) {
+    // Check if the base path exists
+    QDir dir(basePath);
+    if (!dir.exists()) {
+        qWarning() << "Base path does not exist:" << basePath;
+        return QString();
+    }
+
+    // Regular expression to match folder names containing numbers
+    QRegularExpression regex(R"((\d+))");
+    int maxNum = -1; // Start with -1 so the first folder will be 0 (0000)
+
+    // Iterate through the existing folders in the directory
+    for (const QFileInfo &entry : dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+        QRegularExpressionMatch match = regex.match(entry.fileName());
+        if (match.hasMatch()) {
+            int currentNum = match.captured(1).toInt();
+            if (currentNum > maxNum) {
+                maxNum = currentNum;
+            }
+        }
+    }
+
+    // Generate the next folder name with leading zeros (4 digits)
+    int nextNum = maxNum + 1; // Start from 0 if no folders exist
+    QString newFolderName = QString("%1").arg(nextNum, 4, 10, QChar('0'));
+
+    // Create the new folder
+    if (!dir.mkdir(newFolderName)) {
+        qWarning() << "Failed to create folder:" << newFolderName;
+        return QString();
+    }
+
+    qDebug() << "AmodeTimedRecorder::createNumberedFolder() Created folder:" << newFolderName;
+    return newFolderName;
+}
+
 
 void AmodeTimedRecorder::setRecordTimer(int ms)
 {
@@ -63,6 +126,11 @@ void AmodeTimedRecorder::stopRecording()
 
     // Emit a signal to notify other parts of the application that recording has stopped.
     emit amodeTimedRecordingStopped();
+}
+
+bool AmodeTimedRecorder::isCurrentlyRecording()
+{
+    return isRecording;
 }
 
 void AmodeTimedRecorder::on_amodeSignalReceived(const std::vector<uint16_t> &data)
@@ -109,8 +177,8 @@ void AmodeTimedRecorder::processData()
 
             // Generate the filename for the image, incorporating the timestamp and file postfix to make it unique.
             QString imageFilename = "AmodeRecording_" + timestamp_currentEpochMillis_str + m_filePostfix + ".tiff";
-            QString imageFilepath = m_filePath.isEmpty() ? "D:/" : m_filePath;  // Default path is "D:/" if no path is set.
-            QString filepath_filename = imageFilepath + imageFilename;          // Combine the path and filename to get the full path.
+            QString imageFilepath = m_fileCurrentPath.isEmpty() ? "D:/" : m_fileCurrentPath;  // Default path is "D:/" if no path is set.
+            QString filepath_filename = imageFilepath + imageFilename;                        // Combine the path and filename to get the full path.
 
             // Save the image using OpenCV's cv::imwrite function.
             // If the save operation fails, output a warning message.

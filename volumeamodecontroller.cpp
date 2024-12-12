@@ -23,14 +23,17 @@ VolumeAmodeController::VolumeAmodeController(QObject *parent, Q3DScatter *scatte
     qDebug() << "VolumeAmodeController::VolumeAmodeController() Expected worker thread:" << m_visualizerThread;
 }
 
+/*
 VolumeAmodeController::~VolumeAmodeController()
 {
     // delete all the series inside the scatter
     for (QScatter3DSeries *series : scatter_->seriesList()) {
-        if (series->name() == "amode3dsignal" || series->name() == "amode3dorigin") {
+        if (series->name() == "amode3dsignal" || series->name() == "amode3dorigin" || series->name() == "amode3dexpectedpeak") {
             scatter_->removeSeries(series);
         }
     }
+
+    qDebug() << "VolumeAmodeController::~VolumeAmodeController() Trying to delete m_visualizer and m_visualizerThread objects";
 
     // Stop the worker and clean up
     m_visualizer->stop();
@@ -39,7 +42,47 @@ VolumeAmodeController::~VolumeAmodeController()
 
     delete m_visualizer;
     delete m_visualizerThread;
+
+    qDebug() << "VolumeAmodeController::~VolumeAmodeController() m_visualizer and m_visualizerThread objects deleted successfuly";
 }
+*/
+
+VolumeAmodeController::~VolumeAmodeController() {
+    // Remove specific series from scatter
+    QList<QScatter3DSeries *> seriesToRemove;
+    for (QScatter3DSeries *series : scatter_->seriesList()) {
+        if (series->name() == "amode3dsignal" || series->name() == "amode3dorigin" || series->name() == "amode3dexpectedpeak") {
+            seriesToRemove.append(series);
+        }
+    }
+    for (QScatter3DSeries *series : seriesToRemove) {
+        scatter_->removeSeries(series);
+    }
+
+    qDebug() << "VolumeAmodeController::~VolumeAmodeController() Trying to stop and clean up threads";
+
+    // Stop the worker and clean up
+    m_visualizer->stop();
+    m_visualizerThread->quit();
+    if (!m_visualizerThread->wait(5000)) { // Wait up to 5 seconds
+        qWarning() << "Thread did not finish in time, terminating forcefully.";
+        m_visualizerThread->terminate();
+        m_visualizerThread->wait();
+    }
+
+    // Delete visualizer and thread objects
+    if (m_visualizer) {
+        delete m_visualizer;
+        m_visualizer = nullptr;
+    }
+    if (m_visualizerThread) {
+        delete m_visualizerThread;
+        m_visualizerThread = nullptr;
+    }
+
+    qDebug() << "VolumeAmodeController::~VolumeAmodeController() Cleanup completed successfully.";
+}
+
 
 void VolumeAmodeController::setSignalDisplayMode(int mode)
 {
