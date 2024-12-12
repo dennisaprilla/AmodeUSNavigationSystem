@@ -1448,35 +1448,52 @@ void MainWindow::on_pushButton_amodeSnapshot_clicked()
 
     // get the all transformation matrix of the marker in global coordinate
     const auto& tManager = myMocapConnection->getTManager();
-    // get the transformation of the current active probe that is selected by the user
+
+    // get the transformation of the current active holder/stylus that is selected by the user
     QString rigidbody_name = ui->comboBox_amodeNumber->currentText();
-    Eigen::Isometry3d global_T_matrix = tManager.getTransformationById(rigidbody_name.toStdString());
-    // convert to quaternion (more effective when writing it to a file)
-    Eigen::Quaterniond global_Q(global_T_matrix.rotation());
-    Eigen::Vector3d global_t = global_T_matrix.translation();
 
-    // prepare a variable to store all the local matrices
-    std::vector<Eigen::Quaterniond> local_Qs;
-    std::vector<Eigen::Vector3d> local_ts;
-    // for every element inside the group
-    for (int i = 0; i < static_cast<int>(amode_group.size()); i++)
+    // Eigen::Isometry3d global_T_currentHolder = tManager.getTransformationById(rigidbody_name.toStdString());
+    // // convert to quaternion (more effective when writing it to a file)
+    // Eigen::Quaterniond global_Q_currentHolder(global_T_currentHolder.rotation());
+    // Eigen::Vector3d global_t_currentHolder = global_T_currentHolder.translation();
+
+    // prepare a variable (pair of name and T) to store all global T that we want to store
+    std::vector<std::pair<QString, Eigen::Isometry3d>> global_Ts;
+    // get the current holder/stylus name and transformation
+    global_Ts.emplace_back(rigidbody_name, tManager.getTransformationById(rigidbody_name.toStdString()));
+    // get the reference and transformation
+    global_Ts.emplace_back(transformationID_ref, tManager.getTransformationById(transformationID_ref.toStdString()));
+    // get all the bone pin names and transformations (if any)
+    for(int i = 0; i < transformationID_bonepin.size(); i++)
     {
-        // get the rotation euler angle
-        std::vector<double> local_R = amode_group.at(i).local_R;
-        // convert to rotation matrix (ZYX order, read from the right)
-        Eigen::Quaterniond local_Q =
-            (Eigen::AngleAxisd(local_R.at(0) * M_PI / 180.0, Eigen::Vector3d::UnitX()) *
-             Eigen::AngleAxisd(local_R.at(1) * M_PI / 180.0, Eigen::Vector3d::UnitY()) *
-             Eigen::AngleAxisd(local_R.at(2) * M_PI / 180.0, Eigen::Vector3d::UnitZ()));
-
-        // get the translation
-        std::vector<double> tmp = amode_group.at(i).local_t;
-        Eigen::Vector3d local_t(tmp[0], tmp[1], tmp[2]);
-
-        // Create an Eigen::Isometry3d transformation
-        local_Qs.push_back(local_Q);
-        local_ts.push_back(local_t);
+        Eigen::Isometry3d T_tmp = tManager.getTransformationById(transformationID_bonepin[i].toStdString());
+        // check if it not returns an identity, it means that the mocap configured the Bone Pin Rigid Body
+        if(!T_tmp.isApprox(Eigen::Isometry3d::Identity()))
+            global_Ts.emplace_back(transformationID_bonepin[i], T_tmp);
     }
+
+    // // prepare a variable to store all the local matrices
+    // std::vector<Eigen::Quaterniond> local_Qs;
+    // std::vector<Eigen::Vector3d> local_ts;
+    // // for every element inside the group
+    // for (int i = 0; i < static_cast<int>(amode_group.size()); i++)
+    // {
+    //     // get the rotation euler angle
+    //     std::vector<double> local_R = amode_group.at(i).local_R;
+    //     // convert to rotation matrix (ZYX order, read from the right)
+    //     Eigen::Quaterniond local_Q =
+    //         (Eigen::AngleAxisd(local_R.at(0) * M_PI / 180.0, Eigen::Vector3d::UnitX()) *
+    //          Eigen::AngleAxisd(local_R.at(1) * M_PI / 180.0, Eigen::Vector3d::UnitY()) *
+    //          Eigen::AngleAxisd(local_R.at(2) * M_PI / 180.0, Eigen::Vector3d::UnitZ()));
+
+    //     // get the translation
+    //     std::vector<double> tmp = amode_group.at(i).local_t;
+    //     Eigen::Vector3d local_t(tmp[0], tmp[1], tmp[2]);
+
+    //     // Create an Eigen::Isometry3d transformation
+    //     local_Qs.push_back(local_Q);
+    //     local_ts.push_back(local_t);
+    // }
 
     // ==========================================================
     // Handle rigid body snapshot writing
@@ -1501,18 +1518,52 @@ void MainWindow::on_pushButton_amodeSnapshot_clicked()
         // Write the CSV header
         out << "name,q1,q2,q3,q4,t1,t2,t3\n";
 
-        // First row in the csv reserved for global coordinate
-        out << rigidbody_name << ","                                                                    // Name
-            << global_Q.x() << "," << global_Q.y() << "," << global_Q.z() << "," << global_Q.w() << "," // Quaternion components
-            << global_t.x() << "," << global_t.y() << "," << global_t.z() << "\n";                      // Translation components
+        // Iterate through all global transformation that is necessary for snapshot
+        for (const auto& pair_entry : global_Ts)
+        {
+            // get the id and T from the pair
+            QString global_T_id = pair_entry.first;
+            Eigen::Isometry3d global_T_matrix = pair_entry.second;
+
+            // convert to quaternion (more effective when writing it to a file)
+            Eigen::Quaterniond global_Q(global_T_matrix.rotation());
+            Eigen::Vector3d global_t = global_T_matrix.translation();
+
+            // Stream to QTextStream out
+            out << global_T_id << ","                                                                       // Name
+                << global_Q.x() << "," << global_Q.y() << "," << global_Q.z() << "," << global_Q.w() << "," // Quaternion components
+                << global_t.x() << "," << global_t.y() << "," << global_t.z() << "\n";
+        }
+
+        // // First row in the csv reserved for global coordinate
+        // out << rigidbody_name << ","                                                                                                                            // Name
+        //     << global_Q_currentHolder.x() << "," << global_Q_currentHolder.y() << "," << global_Q_currentHolder.z() << "," << global_Q_currentHolder.w() << "," // Quaternion components
+        //     << global_t_currentHolder.x() << "," << global_t_currentHolder.y() << "," << global_t_currentHolder.z() << "\n";                                    // Translation components
 
         // Iterate through each local transformation
         for (int i = 0; i < static_cast<int>(amode_group.size()); i++)
         {
+            // get the rotation euler angle
+            std::vector<double> local_R = amode_group.at(i).local_R;
+            // convert to rotation matrix (ZYX order, read from the right)
+            Eigen::Quaterniond local_Q =
+                (Eigen::AngleAxisd(local_R.at(0) * M_PI / 180.0, Eigen::Vector3d::UnitX()) *
+                 Eigen::AngleAxisd(local_R.at(1) * M_PI / 180.0, Eigen::Vector3d::UnitY()) *
+                 Eigen::AngleAxisd(local_R.at(2) * M_PI / 180.0, Eigen::Vector3d::UnitZ()));
+
+            // get the translation
+            std::vector<double> tmp = amode_group.at(i).local_t;
+            Eigen::Vector3d local_t(tmp[0], tmp[1], tmp[2]);
+
             // Convert name to QString and write data to the file in CSV format
-            out << "Probe_"+QString::number(amode_group.at(i).number) << ","                                                        // Name
-                << local_Qs.at(i).x() << "," << local_Qs.at(i).y() << "," << local_Qs.at(i).z() << "," << local_Qs.at(i).w() << "," // Quaternion components
-                << local_ts.at(i).x() << "," << local_ts.at(i).y() << "," << local_ts.at(i).z() << "\n";                            // Translation components
+            out << "Probe_"+QString::number(amode_group.at(i).number) << ","                            // Name
+                << local_Q.x() << "," << local_Q.y() << "," << local_Q.z() << "," << local_Q.w() << "," // Quaternion components
+                << local_t.x() << "," << local_t.y() << "," << local_t.z() << "\n";                     // Translation components
+
+            // // Convert name to QString and write data to the file in CSV format
+            // out << "Probe_"+QString::number(amode_group.at(i).number) << ","                                                        // Name
+            //     << local_Qs.at(i).x() << "," << local_Qs.at(i).y() << "," << local_Qs.at(i).z() << "," << local_Qs.at(i).w() << "," // Quaternion components
+            //     << local_ts.at(i).x() << "," << local_ts.at(i).y() << "," << local_ts.at(i).z() << "\n";                            // Translation components
         }
 
         // Close the file
@@ -1589,9 +1640,11 @@ void MainWindow::on_pushButton_amodeSnapshot_clicked()
 
     // save here
     if(myAmodeConfig->exportWindow(windowFilepath_filename.toStdString()))
-        QMessageBox::information(this, "Saving success", "Window configuration is successfuly saved");
+        // QMessageBox::information(this, "Saving success", "Window configuration is successfuly saved");
+        qDebug() << "on_pushButton_amodeSnapshot_clicked() Window data written to " << windowFilename << "successfully";
     else
-        QMessageBox::information(this, "Saving failed", "There is something wrong when saving the window configuration file");
+        // QMessageBox::information(this, "Saving failed", "There is something wrong when saving the window configuration file");
+        qDebug() << "on_pushButton_amodeSnapshot_clicked() There is something wrong when saving the window configuration file";
 
 }
 

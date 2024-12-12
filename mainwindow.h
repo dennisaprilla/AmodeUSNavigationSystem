@@ -133,7 +133,7 @@ private:
 
     int bmode2dvisheight = 1;                   //!< Stores the height of the layout where we draw B-mode 2d image (there is a bug that the height keep increasing)
 
-    // constants
+    // constants for paths
     const QString path_root_        = "D:/amodenavsystem";
     const QString dir_bonescan_     = "bonescan";
     const QString dir_intermediate_ = "intermediate";
@@ -145,6 +145,11 @@ private:
     QString path_intermediate_      = "";
     QString path_measurement_       = "";
     QString path_snapshot_          = "";
+
+    // constants for transformation ID
+    const QString transformationID_probe       = "B_N_PRB";
+    const QString transformationID_ref         = "B_N_REF";
+    const QStringList transformationID_bonepin = {"P_F_PRO", "P_F_DIS", "P_T_PRO", "P_T_DIS"};
 
 signals:
     void amodeConnected(AmodeConnection *amodeConnection);
