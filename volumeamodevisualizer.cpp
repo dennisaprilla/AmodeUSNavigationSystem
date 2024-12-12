@@ -471,10 +471,12 @@ void VolumeAmodeVisualizer::processVisualization()
             break;
 
         // qDebug() << "VolumeAmodeVisualizer::processVisualization";
-        QThread::msleep(10);
 
         if (!hasNewData)
+        {
+            QThread::msleep(10);
             continue;
+        }
 
         QMutexLocker locker(&mutex);
 
