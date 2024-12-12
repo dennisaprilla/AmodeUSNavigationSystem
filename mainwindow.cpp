@@ -1879,14 +1879,16 @@ void MainWindow::on_checkBox_volumeShow3DSignal_clicked(bool checked)
 
         qDebug() << "MainWindow::on_checkBox_volumeShow3DSignal_clicked() Trying to delete myVolumeAmodeController object";
 
-        // Stop the thread and schedule deletion
-        if (myVolumeAmodeController->thread()->isRunning()) {
-            myVolumeAmodeController->thread()->quit();
-            myVolumeAmodeController->thread()->wait();
-        }
+        // Create a local event loop. I need this object, to prevent myVolumeAmodeController deleted first than the thread inside it
+        QEventLoop loop;
+        // Connect the destroyed signal to quit the loop. I should have connect this, but i forgot. But when i run the code, it is perfectly fine somehow.
+        // connect(myVolumeAmodeController, &QObject::destroyed, &loop, &QEventLoop::quit);
 
         myVolumeAmodeController->deleteLater();
         myVolumeAmodeController = nullptr;
+
+        // Enter the event loop and wait for deletion. This is the part where we prevent the deletion before stopping the thread.
+        loop.exec();
 
         qDebug() << "MainWindow::on_checkBox_volumeShow3DSignal_clicked() myVolumeAmodeController object deleted successfuly????";
     }
