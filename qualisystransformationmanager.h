@@ -21,7 +21,7 @@ public:
     /**
      * @brief Adding transformations to this class
      */
-    void addTransformation(const std::string& id, const Eigen::Isometry3d& transform);
+    bool addTransformation(const std::string& id, const Eigen::Isometry3d& transform);
 
     /**
      * @brief GET the transformation that is stored in this class using its name (id)
